@@ -50,9 +50,9 @@ public class MeteorGuiTheme extends GuiTheme {
     public final Setting<Double> scale = sgGeneral.add(new DoubleSetting.Builder()
         .name("scale")
         .description("Scale of the GUI.")
-        .defaultValue(0.75)
-        .min(0.5)
-        .sliderRange(0.5, 4)
+        .defaultValue(name.equals("Zenith") ? 0.75 : 1)
+        .min(name.equals("Zenith") ? 0.5 : 0.75)
+        .sliderRange(name.equals("Zenith") ? 0.5 : 0.75, 4)
         .onSliderRelease()
         .onChanged(_ -> {
             if (mc.gui.screen() instanceof WidgetScreen widgetScreen) widgetScreen.invalidate();
@@ -95,8 +95,8 @@ public class MeteorGuiTheme extends GuiTheme {
 
     // Colors
 
-    public final Setting<SettingColor> accentColor = color("accent", "Main color of the GUI.", new SettingColor(174, 98, 242, 235));
-    public final Setting<SettingColor> checkboxColor = color("checkbox", "Color of checkbox.", new SettingColor(174, 98, 242, 235));
+    public final Setting<SettingColor> accentColor = color("accent", "Main color of the GUI.", name.equals("Zenith") ? new SettingColor(174, 98, 242, 235) : new SettingColor(145, 61, 226));
+    public final Setting<SettingColor> checkboxColor = color("checkbox", "Color of checkbox.", name.equals("Zenith") ? new SettingColor(174, 98, 242, 235) : new SettingColor(145, 61, 226));
     public final Setting<SettingColor> plusColor = color("plus", "Color of plus button.", new SettingColor(50, 255, 50));
     public final Setting<SettingColor> minusColor = color("minus", "Color of minus button.", new SettingColor(255, 50, 50));
     public final Setting<SettingColor> favoriteColor = color("favorite", "Color of checked favorite button.", new SettingColor(250, 215, 0));
@@ -115,12 +115,12 @@ public class MeteorGuiTheme extends GuiTheme {
     public final ThreeStateColorSetting backgroundColor = new ThreeStateColorSetting(
         sgBackgroundColors,
         "background",
-        new SettingColor(19, 13, 29, 176),
-        new SettingColor(32, 21, 47, 190),
-        new SettingColor(46, 29, 66, 200)
+        name.equals("Zenith") ? new SettingColor(19, 13, 29, 176) : new SettingColor(20, 20, 20, 200),
+        name.equals("Zenith") ? new SettingColor(32, 21, 47, 190) : new SettingColor(30, 30, 30, 200),
+        name.equals("Zenith") ? new SettingColor(46, 29, 66, 200) : new SettingColor(40, 40, 40, 200)
     );
 
-    public final Setting<SettingColor> moduleBackground = color(sgBackgroundColors, "module-background", "Color of module background when active.", new SettingColor(67, 37, 95, 200));
+    public final Setting<SettingColor> moduleBackground = color(sgBackgroundColors, "module-background", "Color of module background when active.", name.equals("Zenith") ? new SettingColor(67, 37, 95, 200) : new SettingColor(50, 50, 50));
 
     // Outline
 
@@ -143,8 +143,8 @@ public class MeteorGuiTheme extends GuiTheme {
     public final ThreeStateColorSetting scrollbarColor = new ThreeStateColorSetting(
         sgScrollbar,
         "Scrollbar",
-        new SettingColor(32, 21, 47, 190),
-        new SettingColor(46, 29, 66, 200),
+        new SettingColor(30, 30, 30, 200),
+        new SettingColor(40, 40, 40, 200),
         new SettingColor(50, 50, 50, 200)
     );
 
@@ -159,7 +159,7 @@ public class MeteorGuiTheme extends GuiTheme {
     );
 
     public final Setting<SettingColor> sliderLeft = color(sgSlider, "slider-left", "Color of slider left part.", new SettingColor(100, 35, 170));
-    public final Setting<SettingColor> sliderRight = color(sgSlider, "slider-right", "Color of slider right part.", new SettingColor(67, 37, 95, 200));
+    public final Setting<SettingColor> sliderRight = color(sgSlider, "slider-right", "Color of slider right part.", new SettingColor(50, 50, 50));
 
     // Starscript
 
@@ -174,8 +174,10 @@ public class MeteorGuiTheme extends GuiTheme {
     private final Setting<SettingColor> starscriptKeywords = color(sgStarscript, "starscript-keywords", "Color of keywords in Starscript code.", new SettingColor(204, 120, 50));
     private final Setting<SettingColor> starscriptAccessedObjects = color(sgStarscript, "starscript-accessed-objects", "Color of accessed objects (before a dot) in Starscript code.", new SettingColor(152, 118, 170));
 
-    public MeteorGuiTheme() {
-        super("Zenith");
+    public MeteorGuiTheme() { this("Meteor"); }
+
+    protected MeteorGuiTheme(String name) {
+        super(name);
 
         settingsFactory = new DefaultSettingsWidgetFactory(this);
     }

@@ -121,6 +121,7 @@ public final class ZenithGuiScreen extends TabScreen {
             text(r,c.name,23,y+8,12,c==category?WHITE:MUTED);
             hit(10,y,146,29,()->{category=c;query="";moduleScroll=settingScroll=moduleScrollTarget=settingScrollTarget=0;slide=1;selectFirst();});
         }
+        button(r,"Interface style",14,406,138,()->Tabs.get().stream().filter(tab->tab.name.equals("GUI")).findFirst().orElseThrow().openScreen(theme),dt);
         button(r,"HUD editor",14,441,138,()->mc.gui.setScreen(new HudEditorScreen(theme)),dt);
         button(r,"Reset HUD layout",14,476,138,()->Hud.get().resetToDefaultElements(),dt);
         text(r,"26.2 / FABRIC",18,514,8,MUTED);

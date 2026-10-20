@@ -32,6 +32,7 @@ public class GuiThemes {
     @PreInit
     public static void init() {
         add(new MeteorGuiTheme());
+        add(new meteordevelopment.meteorclient.zenith.ZenithGuiTheme());
     }
 
     @PostInit

@@ -1,16 +1,19 @@
 # Validation — 2026-10-20
 
-Update: 2.0.2. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK 25.0.4.1,
+Update: 2.0.3. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK 25.0.4.1,
 Gradle 9.6.1 and Fabric Loom 1.17.21.
 
 | Check | Result |
 | --- | --- |
 | Client build | `bash scripts/setup-cloud.sh` / `./gradlew build` passed |
 | Frame history, animation, radar/docking, sky noise and quality budgets | 18 tests, 0 failures, 0 errors, 0 skipped |
-| Graphical integration | 58 successful checks; `build/smoke/result.json` |
+| Graphical integration | 73 successful checks with the separate example addon loaded; `build/smoke/result.json` |
 | Startup and mixins | Minecraft launched; development mixin audit completed |
 | Menu, module UI, HUD editor | Rendered screenshots captured from Minecraft |
 | Custom dashboard controls | Clicked enum, boolean and slider controls; searched and toggled a module; animated close completed |
+| Meteor GUI mode | Native ModulesScreen, upstream scale/accent/background, theme selector, saved selection and return to Zenith verified |
+| External addon build | Separate Fabric project compiled against the built client API; metadata uses the standard meteor entrypoint |
+| External addon runtime | Category/module attributed to the addon; native settings editor and live private Orbit tick handler verified |
 | Local world | Integrated flat world created and joined |
 | Auto Totem | Supplied totem equipped in Strict mode |
 | Potion HUD | Server potion state received and rendered |
@@ -59,3 +62,9 @@ established.
 ![Ember cloudscape](screenshots/sky-dusk.png)
 
 ![Cinematic silver rain](screenshots/cinematic-rain.png)
+
+![Interface style selector](screenshots/interface-style.png)
+
+![Original Meteor category GUI](screenshots/meteor-gui.png)
+
+![External addon settings in Meteor mode](screenshots/addon-settings.png)

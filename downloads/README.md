@@ -1,6 +1,6 @@
 # Download Zenith Client 2.0
 
-Current update: **2.0.2 for Minecraft 26.2** — animated purple dashboard,
+Current update: **2.0.3 for Minecraft 26.2** — selectable original Meteor GUI or animated purple dashboard,
 Zenith Addons combat modules, corrected radar docking, animated key tiles,
 and denser icy/golden/violet effects with motion trails, crystal orbitals,
 layered blast rings, death spirals and an animated nebula/aurora/cloudscape skybox.
@@ -14,3 +14,7 @@ Requires Minecraft 26.2, Fabric Loader 0.19.3+ and Java 25. Put the client JAR i
 Checksums are in [SHA256SUMS](SHA256SUMS). To reproduce these downloads from
 source, run the build, `python scripts/verify-artifact.py`, then
 `python scripts/package-downloads.py`.
+
+Select **Right Shift → Interface style → Theme: Meteor** for the stock GUI.
+Switch back through **GUI → Theme: Zenith**. A tested buildable addon example
+is included in the source ZIP under `examples/meteor-addon`.

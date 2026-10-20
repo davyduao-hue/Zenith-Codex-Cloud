@@ -4,6 +4,10 @@ import meteordevelopment.meteorclient.MeteorClient;
 import meteordevelopment.meteorclient.addons.MeteorAddon;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.gui.GuiThemes;
+import meteordevelopment.meteorclient.gui.themes.meteor.MeteorGuiTheme;
+import meteordevelopment.meteorclient.gui.screens.ModulesScreen;
+import meteordevelopment.meteorclient.gui.screens.ModuleScreen;
+import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import meteordevelopment.meteorclient.systems.hud.Hud;
 import meteordevelopment.meteorclient.systems.hud.screens.HudEditorScreen;
 import meteordevelopment.meteorclient.systems.modules.Modules;
@@ -40,6 +44,8 @@ public final class SmokeAddon extends MeteorAddon {
     private int skyBefore;
     private float rainBefore,thunderBefore;
     private FakePlayerEntity radarPlayer;
+    private boolean externalAddon;
+    private int oldWidth,oldHeight;
     private final Path results=Path.of("../build/smoke");
     @Override public String getPackage(){return "meteordevelopment.meteorclient.zenith.smoke";}
     @Override public void onInitialize(){MeteorClient.EVENT_BUS.subscribe(this);}
@@ -50,7 +56,7 @@ public final class SmokeAddon extends MeteorAddon {
             if(!started) {
                 if(!(mc.gui.screen() instanceof ZenithMenuScreen)||mc.gui.overlay()!=null)return;
                 started=true;
-                GuiThemes.get().settings.reset();
+                GuiThemes.select("Zenith");GuiThemes.get().settings.reset();
                 Hud.get().resetToDefaultElements();
                 Files.createDirectories(results);
                 Files.deleteIfExists(results.resolve("result.json"));
@@ -60,6 +66,14 @@ public final class SmokeAddon extends MeteorAddon {
                 require(Hud.get().infos.keySet().stream().filter(n->n.startsWith("zenith-")).count()==8,"eight editable Zenith widgets registered");
                 for(String name:List.of("zenith-crystal-aura","zenith-kill-aura")){Modules.get().get(name).disable();Modules.get().get(name).settings.reset();}
                 Modules.get().get(ZenithEffects.class).settings.reset();Modules.get().get(ZenithEffects.class).enable();
+                require(java.util.Arrays.asList(GuiThemes.getNames()).containsAll(List.of("Meteor","Zenith")),"native Meteor and custom Zenith themes are available");
+                externalAddon=net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("zenith-example-addon");
+                if(externalAddon) {
+                    var example=Modules.get().get("example-counter");
+                    require(example!=null,"separate Fabric addon registered its module");
+                    require(example.addon.name.equals("Zenith Example Addon"),"external addon owns its registered module");
+                    require(example.category.name.equals("Example Addon"),"external addon category registered");
+                }
             }
             ticks++;
             switch(stage) {
@@ -78,7 +92,30 @@ public final class SmokeAddon extends MeteorAddon {
                         require(((ZenithGuiScreen)mc.gui.screen()).selectedModuleName().equals("zenith-effects"),"live module search selected matching result");
                     }
                     if(ticks==36){click(260,150,0);require(!Modules.get().get(ZenithEffects.class).isActive(),"custom card toggles module off");}
-                    if(ticks==38){click(260,150,0);require(Modules.get().get(ZenithEffects.class).isActive(),"custom card toggles module on");next();}
+                    if(ticks==38){click(260,150,0);require(Modules.get().get(ZenithEffects.class).isActive(),"custom card toggles module on");}
+                    if(ticks==40){click(80,420,0);require(!(mc.gui.screen() instanceof ZenithGuiScreen),"Interface style button opens native GUI theme settings");}
+                    if(ticks==45){
+                        shot("13-interface-style");oldWidth=mc.getWindow().getWidth();oldHeight=mc.getWindow().getHeight();mc.getWindow().setWindowed(1600,900);
+                        GuiThemes.select("Meteor");GuiThemes.get().settings.reset();GuiThemes.get().clearWindowConfigs();Tabs.get().getFirst().openScreen(GuiThemes.get());
+                    }
+                    if(ticks==60) {
+                        require(mc.gui.screen() instanceof ModulesScreen,"Meteor mode uses original category-window screen");
+                        var meteor=(MeteorGuiTheme)GuiThemes.get();
+                        require(meteor.name.equals("Meteor")&&meteor.scale.get()==1,"Meteor uses original name and default scale");
+                        require(meteor.accentColor.get().r==145&&meteor.accentColor.get().g==61&&meteor.accentColor.get().b==226&&meteor.accentColor.get().a==255,"Meteor uses upstream accent color");
+                        require(meteor.backgroundColor.get().r==20&&meteor.backgroundColor.get().a==200,"Meteor uses upstream background color");
+                        GuiThemes.save();
+                        var saved=net.minecraft.nbt.NbtIo.read(new java.io.File(MeteorClient.FOLDER,"gui/gui.nbt").toPath());
+                        require(saved!=null&&saved.getStringOr("currentTheme","").equals("Meteor"),"Meteor interface selection persisted to disk");
+                        shot("14-meteor-gui");
+                        if(externalAddon) {
+                            var example=Modules.get().get("example-counter");
+                            example.settings.get("counter-step").parse("3");example.enable();mc.gui.setScreen(meteor.moduleScreen(example));
+                        }
+                    }
+                    if(ticks==68&&externalAddon){require(mc.gui.screen() instanceof ModuleScreen,"external addon opens original Meteor settings editor");require(Modules.get().get("example-counter").settings.get("counter-step").get().equals(3),"external addon setting uses Meteor setting API");shot("15-addon-settings");}
+                    if(ticks==72){mc.getWindow().setWindowed(oldWidth,oldHeight);GuiThemes.select("Zenith");Tabs.get().getFirst().openScreen(GuiThemes.get());}
+                    if(ticks==78){require(mc.gui.screen() instanceof ZenithGuiScreen,"switching back restores Zenith dashboard");require(((MeteorGuiTheme)GuiThemes.get()).scale.get()==.75,"Zenith retains its independent scale");next();}
                 }
                 case 2 -> {
                     if(ticks==1)mc.gui.setScreen(new HudEditorScreen(GuiThemes.get()));
@@ -112,6 +149,7 @@ public final class SmokeAddon extends MeteorAddon {
                         Modules.get().get("small-totem").enable();
                     }
                     if(ticks==75) {
+                        if(externalAddon)require(Long.parseLong(Modules.get().get("example-counter").getInfoString())>0,"separate addon receives live Orbit tick events");
                         require(mc.player.getOffhandItem().is(Items.TOTEM_OF_UNDYING),"Auto Totem equipped a supplied totem");
                         require(!mc.player.getActiveEffects().isEmpty(),"server potion state received");
                         require(Zenith.INSTANCE.frames.size()>0,"real world frames sampled");

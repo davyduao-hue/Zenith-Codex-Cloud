@@ -265,6 +265,7 @@ val sourceDistribution = tasks.register<Zip>("sourceDistribution") {
         from("gradle") { into("gradle") }
         from("scripts") { into("scripts") }
         from("docs") { into("docs") }
+        from("examples") { into("examples"); exclude("**/build/**", "**/.gradle/**") }
         from("build.gradle.kts", "settings.gradle.kts", "gradle.properties", "gradlew", "gradlew.bat",
             "LICENSE", "NOTICE.md", "README.md", ".gitignore", ".editorconfig")
     }

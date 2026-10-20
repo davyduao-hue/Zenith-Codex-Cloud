@@ -1,7 +1,7 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.0.2** includes a custom animated rounded purple dashboard,
+source. Version **2.0.3** includes a custom animated rounded purple dashboard,
 floating-star main menu, editable HUD, an animated procedural skybox, and layered combat visuals inspired by the supplied recordings.
 
 ## Build in Windows Command Prompt
@@ -17,12 +17,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.0.2+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.0.3+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.0.2+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.0.3+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -36,6 +36,12 @@ under `.minecraft/zenith-client`.
   enum values and key bindings. **Advanced editor** opens Meteor's full settings
   editor for color pickers, entity lists and other complex settings. **Ctrl+F**
   focuses search. Scroll each pane independently. Escape animates the dashboard closed.
+- **Interface style** in the sidebar → **Theme: Meteor** selects Meteor's original
+  category-window GUI, stock widget factory, scale and colors. **GUI tab → Theme:
+  Zenith** switches back to the animated dashboard. The selection and each theme's
+  colors, scale and window layout are saved independently. Addon-provided themes
+  use their native screens. This setting controls the click GUI; HUD and effects
+  have their own settings.
 - **HUD editor** in the sidebar: drag any widget, set anchors, adjust scale, tint, opacity,
   text shadow and details, or add/remove widgets. Reset restores the Zenith layout.
 - **Render → Zenith Effects:** toggle icy hit rings, golden crystal coronas and
@@ -100,6 +106,31 @@ shader assets. The effects are a new procedural implementation. A pixel-for-pixe
 match, the recordings' lighting/texture pack, and identical FPS on your hardware
 are not established by a successful build. No external shader pack is bundled.
 
+## Making addons
+
+The client retains the `meteor-client` mod ID, `meteor` Fabric addon entrypoint,
+`MeteorAddon`, `Module`, `Category`, setting builders and Orbit event APIs.
+Compatible addons can register modules/categories and open the full native Meteor
+settings editor in either GUI mode. Changing the theme changes presentation;
+addon compatibility depends on the Minecraft version and the APIs it uses.
+Addons for other Minecraft versions, strict dependency ranges, or changed mixin
+internals need adaptation. Keep only one Zenith/Meteor client JAR installed.
+
+A working separate addon project is included in
+[examples/meteor-addon](examples/meteor-addon/README.md). After building Zenith:
+
+```bat
+cd examples\meteor-addon
+gradlew.bat build
+```
+
+Put its `build\libs\zenith-example-addon-1.0.0.jar` alongside Zenith in `mods`.
+The **Example Addon** category contains **Example Counter**, with a boolean,
+integer slider and an Orbit tick handler. Rename the ID/package/category and add
+modules in `ExampleAddon.onInitialize()` to make your own addon. The example
+compiles against the local built client JAR, so it targets this Minecraft 26.2 API
+rather than a different Meteor release. The example is not bundled into Zenith.
+
 ## Performance
 
 Balanced is the default. Effects use bounded storage and batched additive geometry
@@ -139,10 +170,17 @@ its own ignored `run-smoke` directory. It checks module registration, the menu,
 GUI and HUD editor, then creates a uniquely named local flat world to exercise
 HUD sampling, totems, potions, pearls, explosions and death rendering, plus custom
 GUI interactions, addon attacks, duplicate-engine exclusion and menu pausing. It also
-checks sky geometry at all three quality levels, live quality changes, shooting
+checks switching between native Meteor and Zenith, persistent theme selection,
+upstream Meteor defaults, and (when loaded) a separate Fabric addon's category,
+module, settings editor and live event handlers. It checks sky geometry at all three
+quality levels, live quality changes, shooting
 stars, rain restoration, pearl arrival pulses and cleanup when disabled. Results
 and screenshots go to `build/smoke`; inspect `result.json` as well as the process
 exit code. The test addon is excluded from the distributable JAR.
+
+To include the external addon integration checks, build the example first and
+copy its JAR into `run-smoke/mods/` before running the smoke command. The current
+73-check run includes that separately loaded addon.
 
 Actual Minecraft screenshots and the scope of the checks are in
 [docs/VALIDATION.md](docs/VALIDATION.md).
