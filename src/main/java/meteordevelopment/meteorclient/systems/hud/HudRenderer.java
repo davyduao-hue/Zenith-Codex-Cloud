@@ -62,6 +62,9 @@ public class HudRenderer {
         MeteorClient.EVENT_BUS.subscribe(this);
     }
 
+    /** Persistent independent font cache for a second UI pass in the same frame. */
+    public static HudRenderer independent() { return new HudRenderer(); }
+
     public void begin(GuiGraphicsExtractor graphics) {
         Renderer2D.COLOR.begin();
 

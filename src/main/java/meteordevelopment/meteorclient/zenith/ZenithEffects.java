@@ -6,6 +6,8 @@ import meteordevelopment.meteorclient.events.packets.PacketEvent;
 import meteordevelopment.meteorclient.events.render.HeldItemRendererEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
+import meteordevelopment.meteorclient.events.world.ParticleEvent;
+import net.minecraft.core.particles.ParticleTypes;
 import meteordevelopment.meteorclient.renderer.Renderer3D;
 import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
 import meteordevelopment.meteorclient.settings.*;
@@ -29,6 +31,8 @@ import java.util.*;
 /** Local cosmetic geometry, with explicit storage, distance, and tessellation budgets. */
 public final class ZenithEffects extends Module {
     public enum Quality { Low, Balanced, High }
+    public enum Palette { VideoReference, ZenithPurple }
+    public enum SkyMood { EmberDusk, RainySilver, Purple }
     private final SettingGroup general = settings.getDefaultGroup();
     private final SettingGroup visuals = settings.createGroup("Effects");
     public final Setting<Quality> quality = general.add(new EnumSetting.Builder<Quality>().name("quality")
@@ -36,12 +40,19 @@ public final class ZenithEffects extends Module {
     public final Setting<SettingColor> accent = general.add(new ColorSetting.Builder().name("accent")
         .description("Color of rings, crystal coronas, pearl trails, and death effects.")
         .defaultValue(new SettingColor(183, 117, 255)).build());
-    public final Setting<Boolean> purpleSky = bool("purple-sky", "Tint the sky purple; disable to use server colors.", true);
+    private final Setting<Palette> palette=general.add(new EnumSetting.Builder<Palette>().name("effect-palette")
+        .description("Video Reference uses icy sword impacts, golden crystal explosions, and violet pearl trails.").defaultValue(Palette.VideoReference).build());
+    private final Setting<SkyMood> skyMood=general.add(new EnumSetting.Builder<SkyMood>().name("sky-mood")
+        .description("Ember dusk from the crystal clip, silver from the sword clip, or Zenith purple.").defaultValue(SkyMood.EmberDusk).build());
+    private final Setting<Double> flashStrength=general.add(new DoubleSetting.Builder().name("explosion-glow")
+        .description("Brightness of the explosion's soft white-gold core. Zero removes the flash.").defaultValue(.7).range(0,1).sliderRange(0,1).build());
+    public final Setting<Boolean> purpleSky = bool("purple-sky", "Override sky color using the selected sky mood.", true);
     public final Setting<Boolean> starfield = bool("starfield", "Render a subtle procedural constellation skybox.", true);
     public final Setting<Boolean> rain = bool("cinematic-rain", "Local rain; does not change server weather.", false);
     private final Setting<Boolean> hits = bool("hit-effects", "Damage-confirmed shock rings and star sparks.", true);
     private final Setting<Boolean> crystals = bool("crystal-visuals", "Orbiting crystal coronas and rotating wire diamonds.", true);
     private final Setting<Boolean> explosions = bool("explosion-effects", "Layered expanding rings and particle shards for server explosions.", true);
+    private final Setting<Boolean> replaceExplosionSmoke = bool("replace-explosion-smoke", "Replace vanilla explosion clouds with the custom golden glow and shards.", true);
     private final Setting<Boolean> pearls = bool("pearl-visuals", "Fading trails and a corona around thrown pearls.", true);
     private final Setting<Boolean> deaths = bool("death-visuals", "Ascending rings, shards and a light column on entity death.", true);
     private final Setting<Boolean> sword = bool("sword-animation", "Adds a smooth sideways slash to first-person sword swings.", true);
@@ -51,14 +62,15 @@ public final class ZenithEffects extends Module {
     private final ArrayList<Spark> sparks = new ArrayList<>();
     private final ArrayList<Entity> tracked = new ArrayList<>();
     private final Map<Integer, ArrayDeque<Vec3>> trails = new HashMap<>();
+    private final Map<Integer,Integer> trailSeen=new HashMap<>();
     private final Color tint = new Color(), white = new Color(238, 220, 255), clear = new Color(183,117,255,0);
     private int tick;
     private boolean forcedRain;
     private float originalRain, originalThunder;
     private Renderer3D glowRenderer;
-    private int hitBursts, explosionBursts, deathBursts, pearlSamples, crystalFrames;
-    public record Statistics(int hits, int explosions, int deaths, int pearlSamples, int crystalFrames, int sparks) {}
-    public Statistics statistics() { return new Statistics(hitBursts,explosionBursts,deathBursts,pearlSamples,crystalFrames,sparks.size()); }
+    private int hitBursts, explosionBursts, deathBursts, pearlSamples, crystalFrames,replacedClouds;
+    public record Statistics(int hits, int explosions, int deaths, int pearlSamples, int crystalFrames, int sparks,int replacedClouds) {}
+    public Statistics statistics() { return new Statistics(hitBursts,explosionBursts,deathBursts,pearlSamples,crystalFrames,sparks.size(),replacedClouds); }
     private static final double[][] STARS = new double[80][3];
     static {
         Random random = new Random(0x2e1717);
@@ -72,7 +84,24 @@ public final class ZenithEffects extends Module {
     }
 
     public ZenithEffects() {
-        super(Categories.Render, "zenith-effects", "Purple combat rings, crystal coronas, pearl trails, sky, rain and death visuals.");
+        super(Categories.Render, "zenith-effects", "Video-inspired icy hits, golden crystal shockwaves, pearl ribbons, sky and death visuals.");
+    }
+    public int skyColor(){return switch(skyMood.get()){case EmberDusk->0xff8a344a;case RainySilver->0xff9faebb;case Purple->0xff553475;};}
+    public org.joml.Vector4f fogTint(org.joml.Vector4f original) {
+        int rgb=skyColor();float amount=skyMood.get()==SkyMood.EmberDusk?.3f:.18f;
+        return new org.joml.Vector4f(original.x*(1-amount)+(rgb>>16&255)/255f*amount,
+            original.y*(1-amount)+(rgb>>8&255)/255f*amount,original.z*(1-amount)+(rgb&255)/255f*amount,original.w);
+    }
+    public int cloudTint(int original) {
+        int rgb=skyColor();double a=.45;
+        int r=(int)((original>>16&255)*(1-a)+(rgb>>16&255)*a);
+        int g=(int)((original>>8&255)*(1-a)+(rgb>>8&255)*a),b=(int)((original&255)*(1-a)+(rgb&255)*a);
+        return (original&0xff000000)|r<<16|g<<8|b;
+    }
+    private void colorFor(int kind,int alpha) {
+        if(palette.get()==Palette.ZenithPurple)tint.set(accent.get());
+        else switch(kind){case 0->tint.set(169,220,255,255);case 1,3->tint.set(255,151,48,255);case 2->tint.set(204,223,255,255);default->tint.set(196,135,255,255);}
+        tint.a=Math.max(0,Math.min(255,alpha));
     }
 
     private Setting<Boolean> bool(String name, String description, boolean value) {
@@ -81,6 +110,14 @@ public final class ZenithEffects extends Module {
 
     public void hit(LivingEntity entity) {
         if (hits.get()) burst(entity.position().add(0, entity.getBbHeight() * .55, 0), 0);
+    }
+
+    @EventHandler private void onParticle(ParticleEvent event) {
+        if(explosions.get()&&replaceExplosionSmoke.get()&&(event.particle.getType()==ParticleTypes.EXPLOSION||event.particle.getType()==ParticleTypes.EXPLOSION_EMITTER)){event.cancel();replacedClouds++;}
+    }
+    public boolean replaceExplosionAt(Vec3 center) {
+        if(!isActive()||!explosions.get()||!replaceExplosionSmoke.get()||mc.player==null||mc.player.distanceToSqr(center)>range.get()*range.get())return false;
+        replacedClouds++;return true;
     }
 
     private void burst(Vec3 pos, int type) {
@@ -93,7 +130,7 @@ public final class ZenithEffects extends Module {
         int budget = quality.get() == Quality.Low ? 128 : quality.get() == Quality.High ? 768 : 384;
         for (int i = 0; i < count && sparks.size() < budget; i++) {
             double angle = Math.random() * Math.TAU, speed = (.04 + Math.random() * .13) * (type == 0 ? 1 : 2);
-            sparks.add(new Spark(pos, Math.cos(angle) * speed, .03 + Math.random() * .16, Math.sin(angle) * speed));
+            sparks.add(new Spark(pos, Math.cos(angle) * speed, .03 + Math.random() * .16, Math.sin(angle) * speed,type));
         }
     }
 
@@ -126,13 +163,16 @@ public final class ZenithEffects extends Module {
                 if (((crystals.get() && entity instanceof EndCrystal) || (pearls.get() && entity instanceof ThrownEnderpearl))
                     && mc.player.distanceToSqr(entity) < range.get() * range.get()) tracked.add(entity);
             }
-            trails.keySet().removeIf(id -> tracked.stream().noneMatch(e -> e.getId() == id));
+            trails.keySet().removeIf(id -> tick-trailSeen.getOrDefault(id,0)>18);
+            trailSeen.keySet().retainAll(trails.keySet());
         }
         for (Entity entity : tracked) {
             if (entity instanceof ThrownEnderpearl && !entity.isRemoved()) {
+                if(!trails.containsKey(entity.getId())&&trails.size()>=32)continue;
                 ArrayDeque<Vec3> trail = trails.computeIfAbsent(entity.getId(), _ -> new ArrayDeque<>());
                 if (trail.size() == 32) trail.removeFirst();
                 trail.addLast(entity.position());
+                trailSeen.put(entity.getId(),tick);
                 pearlSamples++;
             }
         }
@@ -154,7 +194,7 @@ public final class ZenithEffects extends Module {
 
     @Override public void onDeactivate() { restoreRain(); clear(); }
     @EventHandler private void onLeave(GameLeftEvent event) { clear(); forcedRain = false; }
-    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=0; }
+    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=0; }
 
     @EventHandler private void onHand(HeldItemRendererEvent event) {
         if (!sword.get() || mc.player == null) return;
@@ -190,51 +230,80 @@ public final class ZenithEffects extends Module {
         for (Burst burst : bursts) {
             double age = (burst.age + event.tickDelta) / (burst.type == 2 ? 42.0 : 24.0);
             double radius = .25 + (1 - Math.pow(1 - Math.min(1, age), 3)) * (burst.type == 0 ? 1.05 : 3.8);
-            tint.set(accent.get()); tint.a = (int) (200 * (1 - age));
+            colorFor(burst.type,(int)(220*(1-age)));
             Vec3 p = burst.pos;
-            ring(r, p.x, p.y + (burst.type == 2 ? age * 3 : .02), p.z, radius, .035 + age * .08, tint, segments, false);
-            ring(r, p.x, p.y + .15, p.z, radius * .78, .035, tint, segments, true);
+            if(burst.type==0) {
+                // The sword reference has a white camera-facing shock ring and short star flares.
+                ring(r,p.x,p.y,p.z,radius,.018+age*.025,tint,segments,true);
+                halo(r,p.x,p.y,p.z,radius*.6,(int)(38*(1-age)),0,segments,false);
+            } else {
+                ring(r, p.x, p.y + (burst.type == 2 ? age * 3 : .02), p.z, radius, .028 + age * .045, tint, segments, false);
+                ring(r, p.x, p.y + .45, p.z, radius * .78, .045, tint, segments, true);
+            }
             if (burst.type > 0) {
                 ring(r, p.x, p.y + age * .7, p.z, radius * .55, .055, tint, segments, false);
-                tint.a /= 3;
-                r.quad(p.x-.09, p.y, p.z, p.x+.09, p.y, p.z, p.x+.04, p.y+4*(1-age), p.z, p.x-.04, p.y+4*(1-age), p.z, tint);
+                if(burst.type==1) {
+                    halo(r,p.x,p.y+.5,p.z,1.7+age*1.2,(int)(155*(1-age)*(1-age)*flashStrength.get()),1,segments,false);
+                    halo(r,p.x,p.y+.1,p.z,radius*1.15,(int)(80*(1-age)*flashStrength.get()),1,segments,true);
+                    colorFor(1,(int)(180*(1-age)));
+                    ring(r,p.x,p.y+.45,p.z,radius*.95,.018,tint,segments,true);
+                } else {
+                    tint.a/=3;
+                    r.quad(p.x-.1,p.y,p.z,p.x+.1,p.y,p.z,p.x+.055,p.y+4*(1-age),p.z,p.x-.055,p.y+4*(1-age),p.z,tint);
+                }
             }
         }
         for (Entity entity : tracked) {
             if (entity.isRemoved()) continue;
             Vec3 p = entity.position();
-            tint.set(accent.get()); tint.a = 150;
             if (entity instanceof EndCrystal && crystals.get()) {
                 crystalFrames++;
+                colorFor(1,160);
                 double y = p.y + 1.0 + Math.sin(time * 2 + entity.getId()) * .18;
-                ring(r, p.x, p.y + .08, p.z, .85, .045, tint, segments, false);
-                ring(r, p.x, y, p.z, .64, .025, tint, segments, true);
-                for (int i = 0; i < 4; i++) {
+                halo(r,p.x,p.y+.025,p.z,1.13,80,1,segments,true);
+                colorFor(1,160);
+                ring(r, p.x, p.y + .035, p.z, .86, .025, tint, segments, false);
+                ring(r, p.x, p.y + .04, p.z, .65, .014, tint, segments, false);
+                ring(r, p.x, y, p.z, .62, .012, tint, segments, true);
+                for (int i = 0; i < 8; i++) {
+                    colorFor(1,170);
                     double a = time * 1.5 + i * Math.TAU / 4;
-                    diamond(r, p.x + Math.cos(a)*.85, y + Math.sin(a*2)*.2, p.z + Math.sin(a)*.85, .13, tint);
+                    double b=a+Math.PI*.6;
+                    r.line(p.x+Math.cos(a)*.67,p.y+.04,p.z+Math.sin(a)*.67,p.x+Math.cos(b)*.83,p.y+.04,p.z+Math.sin(b)*.83,tint);
+                    particle(r,p.x+Math.cos(a+i*.4)*.8,y+Math.sin(time*1.7+i)*.65,p.z+Math.sin(a+i*.4)*.8,.045,tint);
                 }
             } else if (entity instanceof ThrownEnderpearl && pearls.get()) {
+                colorFor(4,175);
                 ring(r, p.x, p.y, p.z, .18, .025, tint, 20, true);
-                ArrayDeque<Vec3> trail = trails.get(entity.getId());
-                if (trail == null) continue;
-                Vec3 previous = null; int i = 0;
-                for (Vec3 point : trail) {
-                    tint.a = (int) (180.0 * ++i / trail.size());
-                    if (previous != null) r.line(previous.x,previous.y,previous.z,point.x,point.y,point.z,tint);
-                    previous = point;
+                halo(r,p.x,p.y,p.z,.3,75,4,20,false);
+            }
+        }
+        if(pearls.get())for(var entry:trails.entrySet()) {
+            ArrayDeque<Vec3> trail=entry.getValue();Vec3 previous=null;int i=0;
+            double fade=1-UiMotion.clamp((tick-trailSeen.getOrDefault(entry.getKey(),tick)+event.tickDelta)/18.0,0,1);
+            double yaw=Math.toRadians(mc.player.getYRot());
+            for(Vec3 point:trail) {
+                double t=++i/(double)trail.size();colorFor(4,(int)(190*t*fade));
+                if(previous!=null) {
+                    double w=.025*t,dx=Math.cos(yaw)*w,dz=Math.sin(yaw)*w;
+                    r.quad(previous.x-dx,previous.y,previous.z-dz,point.x-dx,point.y,point.z-dz,
+                        point.x+dx,point.y,point.z+dz,previous.x+dx,previous.y,previous.z+dz,tint);
+                    r.line(previous.x,previous.y,previous.z,point.x,point.y,point.z,tint);
                 }
+                previous=point;
             }
         }
         for (Spark p : sparks) {
-            tint.set(accent.get()); tint.a = (int) (220 * (1 - p.age / 28.0));
+            colorFor(p.kind,(int)(235*(1-p.age/28.0)));
             particle(r, p.x, p.y, p.z, .05 + .07 * (1 - p.age / 28.0), tint);
+            if(p.kind==1&&p.age<18)shard(r,p.x,p.y,p.z,.08*(1-p.age/28.0),time+p.age,tint);
         }
         r.render(event.matrices);
     }
 
     /** An annulus has a translucent skirt and a white core, avoiding a full-screen shader pass. */
     private void ring(Renderer3D r, double x, double y, double z, double radius, double width, Color color, int segments, boolean vertical) {
-        white.a = color.a; clear.set(color); clear.a = 0;
+        white.set(color.r>color.g?255:228,245,color.r>color.g?226:255,color.a); clear.set(color); clear.a = 0;
         double yaw = mc.player.getYRot() * Math.PI / 180;
         for (int i = 0; i < segments; i++) {
             double a = i * Math.TAU / segments, b = (i+1) * Math.TAU / segments;
@@ -256,13 +325,6 @@ public final class ZenithEffects extends Module {
         }
     }
 
-    private void diamond(Renderer3D r, double x, double y, double z, double size, Color color) {
-        r.line(x-size,y,z,x,y+size*2,z,color); r.line(x,y+size*2,z,x+size,y,z,color);
-        r.line(x+size,y,z,x,y-size*2,z,color); r.line(x,y-size*2,z,x-size,y,z,color);
-        r.line(x,y,z-size,x,y+size*2,z,color); r.line(x,y+size*2,z,x,y,z+size,color);
-        r.line(x,y,z+size,x,y-size*2,z,color); r.line(x,y-size*2,z,x,y,z-size,color);
-    }
-
     private void particle(Renderer3D r,double x,double y,double z,double size,Color color) {
         double yaw=Math.toRadians(mc.player.getYRot()),pitch=Math.toRadians(mc.player.getXRot());
         double rx=Math.cos(yaw)*size,rz=Math.sin(yaw)*size;
@@ -277,13 +339,36 @@ public final class ZenithEffects extends Module {
             r.triangles.triangle(center,first,second);
         }
     }
+    private void halo(Renderer3D r,double x,double y,double z,double radius,int alpha,int kind,int segments,boolean horizontal) {
+        colorFor(kind,alpha);clear.set(tint);clear.a=0;white.set(255,245,226,alpha);
+        if(kind==0)white.set(224,245,255,alpha);
+        double yaw=Math.toRadians(mc.player.getYRot()),pitch=Math.toRadians(mc.player.getXRot());
+        for(int i=0;i<segments;i++) {
+            double a=i*Math.TAU/segments,b=(i+1)*Math.TAU/segments;
+            double ax,bx,ay,by,az,bz;
+            if(horizontal){ax=Math.cos(a)*radius;az=Math.sin(a)*radius;ay=0;bx=Math.cos(b)*radius;bz=Math.sin(b)*radius;by=0;}
+            else {ax=(Math.cos(yaw)*Math.cos(a)-Math.sin(yaw)*Math.sin(pitch)*Math.sin(a))*radius;
+                ay=Math.cos(pitch)*Math.sin(a)*radius;az=(Math.sin(yaw)*Math.cos(a)+Math.cos(yaw)*Math.sin(pitch)*Math.sin(a))*radius;
+                bx=(Math.cos(yaw)*Math.cos(b)-Math.sin(yaw)*Math.sin(pitch)*Math.sin(b))*radius;
+                by=Math.cos(pitch)*Math.sin(b)*radius;bz=(Math.sin(yaw)*Math.cos(b)+Math.cos(yaw)*Math.sin(pitch)*Math.sin(b))*radius;}
+            r.triangles.ensureTriCapacity();
+            int c=r.triangles.vec3(x,y,z).color(white).next(),v1=r.triangles.vec3(x+ax,y+ay,z+az).color(clear).next(),v2=r.triangles.vec3(x+bx,y+by,z+bz).color(clear).next();
+            r.triangles.triangle(c,v1,v2);
+        }
+    }
+    private void shard(Renderer3D r,double x,double y,double z,double size,double angle,Color color) {
+        double yaw=Math.toRadians(mc.player.getYRot()),dx=Math.cos(angle)*size,dy=Math.sin(angle)*size;
+        double ex=-dy,ey=dx,rx=Math.cos(yaw),rz=Math.sin(yaw);
+        r.quad(x+(dx+ex)*rx,y+dy+ey,z+(dx+ex)*rz,x+(dx-ex)*rx,y+dy-ey,z+(dx-ex)*rz,
+            x+(-dx-ex)*rx,y-dy-ey,z+(-dx-ex)*rz,x+(-dx+ex)*rx,y-dy+ey,z+(-dx+ex)*rz,color);
+    }
 
     private static final class Burst {
         final Vec3 pos; final int type; int age;
         Burst(Vec3 pos, int type) { this.pos=pos; this.type=type; }
     }
     private static final class Spark {
-        double x,y,z,vx,vy,vz; int age;
-        Spark(Vec3 p,double vx,double vy,double vz) { x=p.x; y=p.y; z=p.z; this.vx=vx; this.vy=vy; this.vz=vz; }
+        double x,y,z,vx,vy,vz; int age;final int kind;
+        Spark(Vec3 p,double vx,double vy,double vz,int kind) { x=p.x; y=p.y; z=p.z; this.vx=vx; this.vy=vy; this.vz=vz;this.kind=kind; }
     }
 }

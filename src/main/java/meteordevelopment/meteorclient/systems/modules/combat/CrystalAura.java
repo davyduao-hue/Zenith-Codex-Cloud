@@ -22,6 +22,7 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.friends.Friends;
 import meteordevelopment.meteorclient.systems.modules.Categories;
 import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.utils.entity.DamageUtils;
 import meteordevelopment.meteorclient.utils.entity.EntityUtils;
 import meteordevelopment.meteorclient.utils.entity.Target;
@@ -600,12 +601,20 @@ public class CrystalAura extends Module {
 
     private double renderDamage;
 
-    public CrystalAura() {
-        super(Categories.Combat, "crystal-aura", "Automatically places and attacks crystals.");
+    public CrystalAura() { this(Categories.Combat, "crystal-aura", "Automatically places and attacks crystals."); }
+
+    protected CrystalAura(meteordevelopment.meteorclient.systems.modules.Category category,String name,String description) {
+        super(category,name,description);
     }
+
+    protected boolean shouldRunAuraTick() { return true; }
 
     @Override
     public void onActivate() {
+        if (getClass()==CrystalAura.class) {
+            var custom=Modules.get().get("zenith-crystal-aura");
+            if(custom!=null) custom.disable();
+        }
         breakTimer = 0;
         placeTimer = 0;
         ticksPassed = 0;
@@ -649,6 +658,7 @@ public class CrystalAura extends Module {
 
     @EventHandler(priority = EventPriority.HIGH)
     private void onPreTick(TickEvent.Pre event) {
+        if(!shouldRunAuraTick()) return;
         // Update last rotation
         didRotateThisTick = false;
         lastRotationTimer++;
@@ -710,6 +720,7 @@ public class CrystalAura extends Module {
 
     @EventHandler(priority = EventPriority.LOWEST - 666)
     private void onPreTickLast(TickEvent.Pre event) {
+        if(!shouldRunAuraTick()) return;
         // Rotate to last rotation
         if (rotate.get() && lastRotationTimer < getLastRotationStopDelay() && !didRotateThisTick) {
             Rotations.rotate(isLastRotationPos ? Rotations.getYaw(lastRotationPos) : lastYaw, isLastRotationPos ? Rotations.getPitch(lastRotationPos) : lastPitch, -100, null);
@@ -726,7 +737,7 @@ public class CrystalAura extends Module {
             placedCrystals.add(event.entity.getId());
         }
 
-        if (fastBreak.get() && !didRotateThisTick && attacks < attackFrequency.get()) {
+        if (shouldRunAuraTick() && fastBreak.get() && !didRotateThisTick && attacks < attackFrequency.get()) {
             float damage = getBreakDamage(event.entity, true);
             if (damage > minDamage.get()) doBreak(event.entity);
         }
@@ -812,6 +823,7 @@ public class CrystalAura extends Module {
     }
 
     private void doBreak(Entity crystal) {
+        if(!shouldRunAuraTick()) return;
         // Anti weakness
         if (antiWeakness.get()) {
             MobEffectInstance weakness = mc.player.getEffect(MobEffects.WEAKNESS);
@@ -868,6 +880,7 @@ public class CrystalAura extends Module {
     }
 
     private void attackCrystal(Entity entity) {
+        if(!isActive()||!shouldRunAuraTick()) return;
         // Attack
         mc.player.connection.send(new ServerboundAttackPacket(entity.getId()));
 
@@ -1019,6 +1032,7 @@ public class CrystalAura extends Module {
     }
 
     private void placeCrystal(BlockHitResult result, double damage, BlockPos supportBlock) {
+        if(!isActive()||!shouldRunAuraTick()) return;
         // Switch
         Item targetItem = supportBlock == null ? Items.END_CRYSTAL : Items.OBSIDIAN;
 

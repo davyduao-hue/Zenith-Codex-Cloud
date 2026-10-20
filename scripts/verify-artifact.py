@@ -7,7 +7,8 @@ import zipfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-artifact = root / 'build/libs/zenith-client-2.0.0+mc26.2.jar'
+properties = dict(line.split('=', 1) for line in (root / 'gradle.properties').read_text().splitlines() if '=' in line and not line.startswith('#'))
+artifact = root / f'build/libs/zenith-client-{properties["zenith_version"]}+mc26.2.jar'
 with zipfile.ZipFile(artifact) as jar:
     names = set(jar.namelist())
     metadata = json.loads(jar.read('fabric.mod.json'))
@@ -18,6 +19,8 @@ with zipfile.ZipFile(artifact) as jar:
     assert any(n.startswith('LICENSE_') for n in names)
     assert 'NOTICE.md' in names
     assert not any('/zenith/smoke/' in n for n in names), 'Test addon leaked into client'
+    for name in ['ZenithGuiScreen', 'ZenithDraw', 'UiMotion', 'addons/ZenithAddons', 'addons/ZenithCrystalAura', 'addons/ZenithKillAura']:
+        assert f'meteordevelopment/meteorclient/zenith/{name}.class' in names, name
     for entry in metadata['entrypoints']['client']:
         assert entry.replace('.', '/') + '.class' in names
     for config_name in metadata['mixins']:

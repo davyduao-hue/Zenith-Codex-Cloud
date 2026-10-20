@@ -62,6 +62,8 @@ public class AddonManager {
             ADDONS.add(MeteorClient.ADDON);
         }
 
+        meteordevelopment.meteorclient.zenith.addons.ZenithAddons.install();
+
         // Addons
         for (EntrypointContainer<MeteorAddon> entrypoint : FabricLoader.getInstance().getEntrypointContainers("meteor", MeteorAddon.class)) {
             ModMetadata metadata = entrypoint.getProvider().getMetadata();

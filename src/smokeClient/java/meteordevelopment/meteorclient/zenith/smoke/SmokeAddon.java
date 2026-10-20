@@ -10,6 +10,11 @@ import meteordevelopment.meteorclient.systems.modules.Modules;
 import meteordevelopment.meteorclient.zenith.*;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.input.*;
+import meteordevelopment.meteorclient.zenith.addons.*;
+import meteordevelopment.meteorclient.systems.modules.combat.CrystalAura;
+import meteordevelopment.meteorclient.systems.modules.combat.KillAura;
+import meteordevelopment.meteorclient.utils.entity.fakeplayer.FakePlayerEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Entity;
@@ -30,6 +35,9 @@ public final class SmokeAddon extends MeteorAddon {
     private int stage, ticks;
     private final List<String> checks=new ArrayList<>();
     private boolean started, finished;
+    private long attackBefore;
+    private int explosionBefore;
+    private FakePlayerEntity radarPlayer;
     private final Path results=Path.of("../build/smoke");
     @Override public String getPackage(){return "meteordevelopment.meteorclient.zenith.smoke";}
     @Override public void onInitialize(){MeteorClient.EVENT_BUS.subscribe(this);}
@@ -44,16 +52,31 @@ public final class SmokeAddon extends MeteorAddon {
                 Hud.get().resetToDefaultElements();
                 Files.createDirectories(results);
                 Files.deleteIfExists(results.resolve("result.json"));
-                for(String name:List.of("crystal-aura","kill-aura","aimbot","aim-assist","esp","block-esp","stash-finder","auto-totem","small-totem","zenith-effects"))
+                for(String name:List.of("crystal-aura","kill-aura","aimbot","aim-assist","esp","block-esp","stash-finder","auto-totem","small-totem","zenith-effects","zenith-crystal-aura","zenith-kill-aura"))
                     require(Modules.get().get(name)!=null,"module registered: "+name);
+                require(Modules.get().get("zenith-crystal-aura").addon.name.equals("Zenith Addons"),"custom combat modules have Zenith Addons identity");
                 require(Hud.get().infos.keySet().stream().filter(n->n.startsWith("zenith-")).count()==8,"eight editable Zenith widgets registered");
+                for(String name:List.of("zenith-crystal-aura","zenith-kill-aura")){Modules.get().get(name).disable();Modules.get().get(name).settings.reset();}
+                Modules.get().get(ZenithEffects.class).settings.reset();Modules.get().get(ZenithEffects.class).enable();
             }
             ticks++;
             switch(stage) {
                 case 0 -> { if(ticks==25) { shot("01-menu");next(); } }
                 case 1 -> {
                     if(ticks==1)mc.gui.setScreen(GuiThemes.get().modulesScreen());
-                    if(ticks==30){shot("02-modules");require(GuiThemes.get().name.equals("Zenith"),"Zenith theme selected");next();}
+                    if(ticks==30){shot("02-modules");require(mc.gui.screen() instanceof ZenithGuiScreen,"custom animated GUI opened");require(GuiThemes.get().name.equals("Zenith"),"Zenith theme selected");}
+                    if(ticks==32) {
+                        var aura=Modules.get().get(ZenithCrystalAura.class);
+                        click(760,170,0);require(aura.settings.get("zenith-profile").get().toString().equals("Fast"),"custom enum selector changed profile");
+                        click(850,215,0);require(aura.settings.get("pause-in-menus").get().equals(false),"custom toggle changed setting");
+                        click(800,284,0);require((Integer)aura.settings.get("minimum-fps").get()>80,"custom slider changed setting");
+                        aura.settings.get("zenith-profile").reset();aura.settings.get("pause-in-menus").reset();aura.settings.get("minimum-fps").reset();
+                        mc.gui.screen().keyPressed(new KeyEvent(70,0,2));
+                        for(char c:"zenith effects".toCharArray())mc.gui.screen().charTyped(new CharacterEvent(c));
+                        require(((ZenithGuiScreen)mc.gui.screen()).selectedModuleName().equals("zenith-effects"),"live module search selected matching result");
+                    }
+                    if(ticks==36){click(260,150,0);require(!Modules.get().get(ZenithEffects.class).isActive(),"custom card toggles module off");}
+                    if(ticks==38){click(260,150,0);require(Modules.get().get(ZenithEffects.class).isActive(),"custom card toggles module on");next();}
                 }
                 case 2 -> {
                     if(ticks==1)mc.gui.setScreen(new HudEditorScreen(GuiThemes.get()));
@@ -91,12 +114,18 @@ public final class SmokeAddon extends MeteorAddon {
                         require(!mc.player.getActiveEffects().isEmpty(),"server potion state received");
                         require(Zenith.INSTANCE.frames.size()>0,"real world frames sampled");
                         for(Entity entity:mc.level.entitiesForRendering())if(entity instanceof Zombie&&mc.player.distanceTo(entity)<8){mc.gameMode.attack(mc.player,entity);break;}
+                        radarPlayer=new FakePlayerEntity(mc.player,"Radar Preview",20,false);
+                        radarPlayer.setPos(mc.player.getX()-3,mc.player.getY(),mc.player.getZ()+3);radarPlayer.spawn();
                     }
                     if(ticks==90)shot("04-world-hud");
                     if(ticks==100){command("summon minecraft:ender_pearl ~ ~2 ~ {Motion:[0.05d,0.2d,0.15d]}");}
-                    if(ticks==110)shot("05-pearl");
-                    if(ticks==120)command("summon minecraft:tnt ~4 ~ ~3 {fuse:20}");
-                    if(ticks==145)shot("06-explosion");
+                    if(ticks>=110&&ticks<=116){mc.options.keyUp.setDown(true);mc.options.keyUse.setDown(true);meteordevelopment.meteorclient.utils.misc.input.Input.setButtonState(1,true);}
+                    if(ticks>=110&&ticks<=114)MeteorClient.EVENT_BUS.post(meteordevelopment.meteorclient.events.meteor.MouseClickEvent.get(new MouseButtonEvent(0,0,new MouseButtonInfo(1,0)),meteordevelopment.meteorclient.utils.misc.input.KeyAction.Press));
+                    if(ticks==115)shot("05-pearl-keys");
+                    if(ticks==117){mc.options.keyUp.setDown(false);mc.options.keyUse.setDown(false);meteordevelopment.meteorclient.utils.misc.input.Input.setButtonState(1,false);}
+                    if(ticks==120){command("weather clear");command("tp @e[type=minecraft:zombie] ~20 ~ ~");command("fill ~-5 ~-4 ~-1 ~5 ~-1 ~9 minecraft:obsidian");mc.player.setXRot(18);command("summon minecraft:tnt ~ ~ ~4 {fuse:20}");}
+                    if(ticks>=120&&ticks<=150){mc.level.setRainLevel(0);mc.level.setThunderLevel(0);}
+                    if(ticks==143)shot("06-explosion");
                     if(ticks==160)command("summon minecraft:zombie ~2 ~ ~3 {NoAI:1b,PersistenceRequired:1b}");
                     if(ticks==163)command("kill @e[type=minecraft:zombie,distance=..16]");
                     if(ticks==165)shot("07-death");
@@ -105,6 +134,7 @@ public final class SmokeAddon extends MeteorAddon {
                         ZenithEffects.Statistics stats=Modules.get().get(ZenithEffects.class).statistics();
                         require(stats.hits()>0,"damage-confirmed hit effect spawned");
                         require(stats.explosions()>0,"server explosion effect spawned");
+                        require(stats.replacedClouds()>0,"vanilla explosion cloud replaced with custom effect");
                         require(stats.deaths()>0,"server death effect spawned");
                         require(stats.pearlSamples()>0,"pearl trail sampled");
                         require(stats.crystalFrames()>0,"crystal corona rendered");
@@ -113,6 +143,40 @@ public final class SmokeAddon extends MeteorAddon {
                     }
                 }
                 case 5 -> {
+                    var crystal=Modules.get().get(ZenithCrystalAura.class);
+                    var kill=Modules.get().get(ZenithKillAura.class);
+                    if(ticks==1) {
+                        crystal.enable();require(!Modules.get().get(CrystalAura.class).isActive(),"custom crystal aura excludes base engine");
+                        Modules.get().get(CrystalAura.class).enable();require(!crystal.isActive(),"base crystal aura excludes custom engine");
+                        Modules.get().get(CrystalAura.class).disable();
+                        if(radarPlayer!=null)radarPlayer.despawn();
+                        command("summon minecraft:zombie ~ ~ ~2 {NoAI:1b,PersistenceRequired:1b}");
+                        kill.settings.get("entities").parse("minecraft:zombie");kill.settings.get("attack-when-holding").parse("All");
+                        attackBefore=Zenith.INSTANCE.lastAttack;kill.enable();
+                        require(!Modules.get().get(KillAura.class).isActive(),"custom kill aura excludes base engine");
+                    }
+                    if(ticks==35){require(Zenith.INSTANCE.lastAttack>attackBefore,"custom kill aura attacked an in-world target");mc.gui.setScreen(GuiThemes.get().modulesScreen());}
+                    if(ticks==45){require(!kill.attacking,"custom kill aura pauses while GUI is open");shot("08-world-gui");}
+                    if(ticks==48){mc.gui.screen().onClose();}
+                    if(ticks==65) {
+                        require(mc.gui.screen()==null,"custom GUI animated close completed");
+                        Modules.get().get(KillAura.class).enable();require(!kill.isActive(),"base kill aura excludes custom engine");
+                        Modules.get().get(KillAura.class).disable();next();
+                    }
+                }
+                case 6 -> {
+                    var crystal=Modules.get().get(ZenithCrystalAura.class);
+                    if(ticks==1) {
+                        crystal.settings.get("entities").parse("minecraft:zombie");crystal.settings.get("min-damage").parse("0");crystal.settings.get("rotate").parse("false");
+                        crystal.enable();mc.gui.setScreen(GuiThemes.get().modulesScreen());
+                        explosionBefore=Modules.get().get(ZenithEffects.class).statistics().explosions();
+                        command("summon minecraft:zombie ~ ~ ~3 {NoAI:1b,PersistenceRequired:1b}");
+                        command("summon minecraft:end_crystal ~ ~1 ~3 {ShowBottom:0b}");
+                    }
+                    if(ticks==20){require(Modules.get().get(ZenithEffects.class).statistics().explosions()==explosionBefore,"custom crystal aura pauses new-crystal attacks in menus");mc.gui.screen().onClose();}
+                    if(ticks==60){require(Modules.get().get(ZenithEffects.class).statistics().explosions()>explosionBefore,"custom crystal aura resumes and breaks a local crystal");crystal.disable();next();}
+                }
+                case 7 -> {
                     if(ticks==1){mc.disconnectWithSavingScreen();}
                     if(ticks==40) {
                         Files.writeString(results.resolve("result.json"),"{\"passed\":true,\"checks\":"+checks.size()+",\"workflow\":\"menu, module GUI, editable HUD, integrated world, totem, potion, pearl, explosion, death\"}\n");
@@ -128,6 +192,12 @@ public final class SmokeAddon extends MeteorAddon {
         }
     }
     private void next(){stage++;ticks=0;}
+    private void click(double x,double y,int button) {
+        double sw=mc.getWindow().getWidth(),sh=mc.getWindow().getHeight();
+        double scale=Math.min(1.4,Math.min((sw-38)/900,(sh-38)/530)),guiScale=mc.getWindow().getGuiScale();
+        MouseButtonEvent event=new MouseButtonEvent(((sw-900*scale)/2+x*scale)/guiScale,((sh-530*scale)/2+y*scale)/guiScale,new MouseButtonInfo(button,0));
+        mc.gui.screen().mouseClicked(event,false);mc.gui.screen().mouseReleased(event);
+    }
     private void command(String command){mc.player.connection.sendCommand(command);}
     private void require(boolean condition,String description){if(!condition)throw new IllegalStateException(description);checks.add(description);System.out.println("ZENITH_SMOKE OK: "+description);}
     private void shot(String name) {

@@ -18,6 +18,6 @@ public abstract class ZenithSkyMixin {
     private void zenith$sky(ClientLevel level,float partialTick,Camera camera,SkyRenderState state,CallbackInfo ci) {
         if(Modules.get()==null)return;
         ZenithEffects fx=Modules.get().get(ZenithEffects.class);
-        if(fx!=null&&fx.isActive()&&fx.purpleSky.get())state.skyColor=0xff553475;
+        if(fx!=null&&fx.isActive()&&fx.purpleSky.get())state.skyColor=fx.skyColor();
     }
 }

@@ -269,15 +269,25 @@ public class KillAura extends Module {
     public boolean attacking, swapped;
     public static int previousSlot;
 
-    public KillAura() {
-        super(Categories.Combat, "kill-aura", "Attacks specified entities around you.");
+    public KillAura() { this(Categories.Combat, "kill-aura", "Attacks specified entities around you."); }
+
+    protected KillAura(meteordevelopment.meteorclient.systems.modules.Category category,String name,String description) {
+        super(category,name,description);
     }
+
+    protected boolean shouldRunAuraTick() { return true; }
 
     @Override
     public void onActivate() {
+        if (getClass()==KillAura.class) {
+            var custom=Modules.get().get("zenith-kill-aura");
+            if(custom!=null) custom.disable();
+        }
         previousSlot = -1;
         swapped = false;
     }
+
+    protected CrystalAura crystalAuraForPause() { return Modules.get().get(CrystalAura.class); }
 
     @Override
     public void onDeactivate() {
@@ -287,6 +297,7 @@ public class KillAura extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
+        if(!shouldRunAuraTick()) {stopAttacking();return;}
         if (!mc.player.isAlive() || PlayerUtils.getGameMode() == GameType.SPECTATOR) {
             stopAttacking();
             return;
@@ -303,7 +314,8 @@ public class KillAura extends Module {
             stopAttacking();
             return;
         }
-        if (pauseOnCA.get() && Modules.get().get(CrystalAura.class).isActive() && Modules.get().get(CrystalAura.class).kaTimer > 0) {
+        CrystalAura crystalAura=crystalAuraForPause();
+        if (pauseOnCA.get() && crystalAura!=null && crystalAura.isActive() && crystalAura.kaTimer > 0) {
             stopAttacking();
             return;
         }

@@ -84,18 +84,28 @@ public final class ZenithMenuScreen extends Screen {
     }
 
     private static final class ZenithButton extends Button {
+        private double hoverAmount;
+        private long previous=System.nanoTime();
         ZenithButton(int x,int y,int w,int h,String label,OnPress action) {
             super(x,y,w,h,Component.literal(label),action,DEFAULT_NARRATION);
         }
         @Override protected void extractContents(GuiGraphicsExtractor g,int mx,int my,float delta) {
             boolean hover=isHoveredOrFocused();
+            long now=System.nanoTime();
+            hoverAmount=UiMotion.approach(hoverAmount,hover?1:0,14,(now-previous)/1e9);previous=now;
             int x=getX(),y=getY(),w=getWidth(),h=getHeight();
-            g.fill(x,y,x+w,y+h,hover?0xc346285f:0xb01d142d);
-            g.fill(x,y,x+w,y+1,hover?0xffc497ff:0x705e3e83);
-            g.fill(x,y+h-1,x+w,y+h,0x504a2f65);
-            if(hover)g.fill(x,y, x+2,y+h,0xffbd88ff);
+            int tint=0xc0000000|((int)(29+41*hoverAmount)<<16)|((int)(20+20*hoverAmount)<<8)|(int)(45+50*hoverAmount);
+            rounded(g,x-1,y-1,w+2,h+2,6,((int)(65+90*hoverAmount)<<24)|0x9864ce);
+            rounded(g,x,y,w,h,5,tint);
             String label=getMessage().getString();
             g.text(mc.font,label,x+(w-mc.font.width(label))/2,y+(h-8)/2,hover?0xffffffff:0xffd5c6e8,false);
+        }
+        private static void rounded(GuiGraphicsExtractor g,int x,int y,int w,int h,int radius,int color) {
+            for(int row=0;row<h;row++) {
+                double edge=row<radius?radius-row-.5:row>=h-radius?row-(h-radius)+.5:0;
+                int inset=edge==0?0:(int)Math.ceil(radius-Math.sqrt(radius*radius-edge*edge));
+                g.fill(x+inset,y+row,x+w-inset,y+row+1,color);
+            }
         }
     }
 }

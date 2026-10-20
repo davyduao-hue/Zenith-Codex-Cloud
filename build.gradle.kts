@@ -13,7 +13,7 @@ base {
     archivesName = archivesBaseName
     group = mavenGroup
 
-    version = "2.0.0+mc${libs.versions.minecraft.get()}"
+    version = "${providers.gradleProperty("zenith_version").get()}+mc${libs.versions.minecraft.get()}"
 }
 
 repositories {

@@ -256,11 +256,11 @@ public abstract class GuiTheme implements ISerializable<GuiTheme> {
     // Screens
 
     public TabScreen modulesScreen() {
-        return new ModulesScreen(this);
+        return new meteordevelopment.meteorclient.zenith.ZenithGuiScreen(this);
     }
 
     public boolean isModulesScreen(Screen screen) {
-        return screen instanceof ModulesScreen;
+        return screen instanceof ModulesScreen || screen instanceof meteordevelopment.meteorclient.zenith.ZenithGuiScreen;
     }
 
     public WidgetScreen moduleScreen(Module module) {
