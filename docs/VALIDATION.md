@@ -1,13 +1,13 @@
 # Validation — 2026-10-20
 
-Update: 2.0.1. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK 25.0.4.1,
+Update: 2.0.2. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK 25.0.4.1,
 Gradle 9.6.1 and Fabric Loom 1.17.21.
 
 | Check | Result |
 | --- | --- |
 | Client build | `bash scripts/setup-cloud.sh` / `./gradlew build` passed |
-| Frame history, animation, radar and docking | 12 tests, 0 failures, 0 errors, 0 skipped |
-| Graphical integration | 43 successful checks; `build/smoke/result.json` |
+| Frame history, animation, radar/docking, sky noise and quality budgets | 18 tests, 0 failures, 0 errors, 0 skipped |
+| Graphical integration | 58 successful checks; `build/smoke/result.json` |
 | Startup and mixins | Minecraft launched; development mixin audit completed |
 | Menu, module UI, HUD editor | Rendered screenshots captured from Minecraft |
 | Custom dashboard controls | Clicked enum, boolean and slider controls; searched and toggled a module; animated close completed |
@@ -19,10 +19,15 @@ Gradle 9.6.1 and Fabric Loom 1.17.21.
 | Crystals | Crystal corona geometry rendered |
 | Pearls | Thrown pearl produced trail samples |
 | Explosions/deaths | Server events produced their respective effect bursts |
+| Expanded particles | Motion streaks, crossed hit arcs, crystal orbitals, blast filaments, death spirals and pearl arrival pulses rendered |
+| Procedural sky | Nebula, Aurora and Cloudscape captured in Minecraft; native sky-pass shader compiled |
+| Sky quality | All three mesh sizes and star limits checked; shooting stars submitted; toggle/cleanup verified |
+| Terrain occlusion | Obsidian test column remains opaque in front of the procedural sky |
+| Local weather | Cinematic rain rendered streaks/ripples; toggling it off restored prior rain/thunder levels |
 | Explosion replacement | Native explosion clouds were intercepted while the golden effect rendered |
 | Zenith Addons | Custom Kill Aura attacked a local zombie; Crystal Aura paused newly spawned crystals in menus and resumed to break one; both aura pairs excluded their duplicate engines |
 | Radar and keys | Player face marker rendered; W/RMB press fills, purple pearl ribbon and in-tile CPS captured |
-| Performance limits | Balanced storage stayed within its 384-spark budget |
+| Performance limits | Low/Balanced/High ceilings are 256/768/1,536 sparks; live downgrades trim active storage |
 | JAR packaging | Metadata, entrypoints, mixins, 13 nested libraries, license, Java target and exclusion of the smoke addon verified |
 
 The graphical checks use Xvfb and Mesa llvmpipe (software OpenGL). They validate
@@ -46,3 +51,11 @@ established.
 ![Golden explosion effect](screenshots/explosion.png)
 
 ![Custom dashboard over the world HUD](screenshots/world-gui.png)
+
+![Purple nebula sky](screenshots/sky-nebula.png)
+
+![Teal aurora sky](screenshots/sky-aurora.png)
+
+![Ember cloudscape](screenshots/sky-dusk.png)
+
+![Cinematic silver rain](screenshots/cinematic-rain.png)

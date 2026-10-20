@@ -19,8 +19,10 @@ with zipfile.ZipFile(artifact) as jar:
     assert any(n.startswith('LICENSE_') for n in names)
     assert 'NOTICE.md' in names
     assert not any('/zenith/smoke/' in n for n in names), 'Test addon leaked into client'
-    for name in ['ZenithGuiScreen', 'ZenithDraw', 'UiMotion', 'addons/ZenithAddons', 'addons/ZenithCrystalAura', 'addons/ZenithKillAura']:
+    for name in ['ZenithGuiScreen', 'ZenithDraw', 'UiMotion', 'VisualBudget', 'SkyPattern', 'ZenithSkybox', 'addons/ZenithAddons', 'addons/ZenithCrystalAura', 'addons/ZenithKillAura']:
         assert f'meteordevelopment/meteorclient/zenith/{name}.class' in names, name
+    assert 'assets/meteor-client/shaders/zenith_sky.vert' in names
+    assert 'uniform Projection' in jar.read('assets/meteor-client/shaders/zenith_sky.vert').decode()
     for entry in metadata['entrypoints']['client']:
         assert entry.replace('.', '/') + '.class' in names
     for config_name in metadata['mixins']:

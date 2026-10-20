@@ -25,6 +25,8 @@ public abstract class CloudRendererMixin {
     }
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void onRenderClouds(int color, CloudStatus cloudStatus, float bottomY, int range, Vec3 cameraPosition, long gameTime, float partialTicks, CallbackInfo ci) {
+        var fx=Modules.get().get(meteordevelopment.meteorclient.zenith.ZenithEffects.class);
+        if(fx!=null&&fx.hasSkybox()&&fx.replaceClouds.get()){ci.cancel();return;}
         Ambience ambience = Modules.get().get(Ambience.class);
         if (ambience.isActive() && ambience.endSky.get()) ci.cancel();
     }

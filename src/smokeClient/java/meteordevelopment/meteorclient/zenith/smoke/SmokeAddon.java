@@ -37,6 +37,8 @@ public final class SmokeAddon extends MeteorAddon {
     private boolean started, finished;
     private long attackBefore;
     private int explosionBefore;
+    private int skyBefore;
+    private float rainBefore,thunderBefore;
     private FakePlayerEntity radarPlayer;
     private final Path results=Path.of("../build/smoke");
     @Override public String getPackage(){return "meteordevelopment.meteorclient.zenith.smoke";}
@@ -138,7 +140,9 @@ public final class SmokeAddon extends MeteorAddon {
                         require(stats.deaths()>0,"server death effect spawned");
                         require(stats.pearlSamples()>0,"pearl trail sampled");
                         require(stats.crystalFrames()>0,"crystal corona rendered");
-                        require(stats.sparks()<=384,"Balanced particle budget respected");
+                        require(stats.sparks()<=768,"Balanced particle budget respected");
+                        require(stats.lightningFrames()>0,"branching explosion filaments rendered");
+                        require(stats.trailImpacts()>0,"removed pearl produced a violet arrival pulse");
                         next();
                     }
                 }
@@ -177,6 +181,45 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==60){require(Modules.get().get(ZenithEffects.class).statistics().explosions()>explosionBefore,"custom crystal aura resumes and breaks a local crystal");crystal.disable();next();}
                 }
                 case 7 -> {
+                    ZenithEffects fx=Modules.get().get(ZenithEffects.class);
+                    if(ticks==1) {
+                        command("weather clear");command("time set 16000");command("fill ~-2 ~ ~15 ~2 ~12 ~19 minecraft:obsidian");
+                        mc.player.setYRot(0);mc.player.setXRot(-18);
+                        fx.settings.get("sky-style").parse("Nebula");fx.settings.get("sky-mood").parse("Purple");
+                    }
+                    if(ticks<30){mc.level.setRainLevel(0);mc.level.setThunderLevel(0);}
+                    if(ticks==15)shot("09a-sky-occlusion");
+                    if(ticks==16)command("fill ~-2 ~ ~15 ~2 ~12 ~19 minecraft:air");
+                    if(ticks==25) {
+                        var stats=fx.statistics();require(stats.skyFrames()>0,"animated skybox submitted frames");
+                        require(stats.skyVertices()==fx.budget().skyVertices(),"Balanced sky geometry follows its budget");
+                        require(stats.skyStars()==384,"dense starfield rendered with Balanced limit");shot("09-sky-nebula");
+                    }
+                    if(ticks==32){fx.settings.get("sky-style").parse("Aurora");fx.settings.get("sky-mood").parse("Aurora");}
+                    if(ticks==52)shot("10-sky-aurora");
+                    if(ticks==60){fx.settings.get("sky-style").parse("Cloudscape");fx.settings.get("sky-mood").parse("EmberDusk");}
+                    if(ticks==80)shot("11-sky-dusk");
+                    if(ticks==90){rainBefore=mc.level.getRainLevel(1);thunderBefore=mc.level.getThunderLevel(1);fx.settings.get("sky-mood").parse("RainySilver");fx.settings.get("cinematic-rain").parse("true");mc.player.setXRot(8);}
+                    if(ticks==115){require(fx.statistics().rainFrames()>0,"cinematic rain streaks and surface ripples rendered");shot("12-cinematic-rain");fx.settings.get("cinematic-rain").parse("false");}
+                    if(ticks==117)require(Math.abs(mc.level.getRainLevel(1)-rainBefore)<.02&&Math.abs(mc.level.getThunderLevel(1)-thunderBefore)<.02,"disabling cinematic rain restores previous local weather");
+                    if(ticks==135)for(int i=0;i<8;i++)command("summon minecraft:tnt ~"+(i%3-1)+" ~ ~8 {fuse:8}");
+                    if(ticks==145)fx.quality.set(ZenithEffects.Quality.Low);
+                    if(ticks==150) {
+                        require(fx.statistics().sparks()<=256,"live quality downgrade trims particles to Low budget");
+                        require(fx.statistics().skyVertices()==fx.budget().skyVertices(),"sky mesh resized to Low budget");
+                        require(fx.statistics().skyStars()==128,"star density follows Low budget");
+                        require(fx.statistics().meteorFrames()>0,"shooting-star heads and tails rendered");
+                        fx.quality.set(ZenithEffects.Quality.High);
+                    }
+                    if(ticks==160) {
+                        require(fx.statistics().skyVertices()==fx.budget().skyVertices(),"sky mesh resized to High budget");
+                        require(fx.statistics().sparks()<=1536,"High particle budget respected");
+                        fx.quality.set(ZenithEffects.Quality.Balanced);fx.animatedSky.set(false);skyBefore=fx.statistics().skyFrames();
+                    }
+                    if(ticks==170){require(fx.statistics().skyFrames()==skyBefore,"skybox toggle stops custom sky rendering");fx.disable();}
+                    if(ticks==175){require(fx.statistics().sparks()==0&&fx.statistics().skyFrames()==0,"disabling effects clears particles and sky statistics");fx.enable();next();}
+                }
+                case 8 -> {
                     if(ticks==1){mc.disconnectWithSavingScreen();}
                     if(ticks==40) {
                         Files.writeString(results.resolve("result.json"),"{\"passed\":true,\"checks\":"+checks.size()+",\"workflow\":\"menu, module GUI, editable HUD, integrated world, totem, potion, pearl, explosion, death\"}\n");

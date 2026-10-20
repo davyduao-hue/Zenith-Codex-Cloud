@@ -187,7 +187,7 @@ public class MeshBuilder {
         }
 
         if (vertices == null || indices == null) {
-            allocateBuffers(256 * 4, 512 * indexType.bytes);
+            allocateBuffers(Math.max(256 * 4,vertexCount),Math.max(512 * indexType.bytes,indexCount));
             return;
         }
 

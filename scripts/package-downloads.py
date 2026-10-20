@@ -22,6 +22,9 @@ Replace your previous Zenith or Meteor JAR; keep only one installed.
 Right Shift opens the animated purple dashboard. Zenith Addons contains
 the custom combat modules; Render > Zenith Effects controls the visuals.
 HUD editor in the sidebar edits radar, key tiles and graphs.
+Render > Zenith Effects > Skybox selects Nebula/Aurora/Cloudscape and
+controls auroras, stars, shooting stars, cloud density and brightness.
+Effect density and Quality control particle emission and performance.
 
 Build: extract Zenith-Client-2.0-Source.zip, open Command Prompt inside
 Zenith-Client-2.0, and run gradlew.bat build with JDK 25 on PATH.

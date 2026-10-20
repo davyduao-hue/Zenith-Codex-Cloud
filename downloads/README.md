@@ -1,8 +1,9 @@
 # Download Zenith Client 2.0
 
-Current update: **2.0.1 for Minecraft 26.2** — animated purple dashboard,
+Current update: **2.0.2 for Minecraft 26.2** — animated purple dashboard,
 Zenith Addons combat modules, corrected radar docking, animated key tiles,
-and video-inspired icy/golden/violet effects.
+and denser icy/golden/violet effects with motion trails, crystal orbitals,
+layered blast rings, death spirals and an animated nebula/aurora/cloudscape skybox.
 
 - [Client JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-MC26.2.jar)
 - [Buildable source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-Source.zip)
