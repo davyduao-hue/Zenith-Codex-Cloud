@@ -1,8 +1,8 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.0.4** includes built-in Catppuccin and Nora Tweaks source,
-a rounded purple Zenith theme, a floating-star main menu, editable HUD,
+source. Version **2.0.5** includes built-in Catppuccin and Nora Tweaks source,
+a distinct purple Zenith theme with animated pill switches, a floating-star main menu, editable HUD,
 and red-dusk/silver-storm atmosphere and combat visuals based on the recordings.
 
 ## Build in Windows Command Prompt
@@ -18,12 +18,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.0.4+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.0.5+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.0.4+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.0.5+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -34,19 +34,29 @@ under `.minecraft/zenith-client`.
 
 - **Right Shift:** open the selected theme. **GUI → Theme** offers **Zenith 2.0**,
   **Catppuccin**, and **Meteor**. Zenith uses rounded purple category windows and
-  animated controls; Catppuccin has its original theme controls, and Meteor keeps
+  animated controls and category pages; Catppuccin has its original theme controls, and Meteor keeps
   its original widgets. Each theme saves its own colors, scale and window layout.
   Existing saved `Zenith` selections migrate to `Zenith 2.0`.
 - **Zenith 2.0 → Layout:** use **Categories** for the native module windows or
   **Dashboard** for the previous sidebar/card layout. The dashboard's **Interface
   style** button opens the same GUI settings. Complex module settings keep their
   full native editor.
-- **HUD tab:** edit, add, move or remove widgets. Reset restores the Zenith layout.
+- **HUD tab:** edit, add, move or remove widgets. Every Zenith element now has
+  **Size multiplier = 2** by default, including older profiles. Lower that setting
+  for the previous size. Rounded corners, graph lines and circles have soft edges;
+  keys and Look Direction stack above the graphs when the hotbar leaves too little room.
 - **Render → Zenith Effects → Visual preset:** **Reference Crystal** selects the
   red dusk sky, orange embers and golden blast effects; **Reference Sword** selects
   silver storm/rain and short pale hit flashes; **Zenith Purple** selects the purple
   atmosphere. Presets apply when selected; individual controls remain editable.
   Existing settings are retained on upgrade, so select a preset to apply the new look.
+- **Zenith Effects → Skybox → Sky source:** **Zenith**, **Vanilla**, **Resource Pack**
+  or **Custom Panorama**. Vanilla and Resource Pack release sky, cloud and fog
+  overrides while keeping the combat effects. Custom Panorama loads a 2:1 PNG
+  from an enabled resource pack; see [custom sky instructions](docs/SKYBOXES.md).
+  Missing images fall back to the native sky. Zenith sky orientation ignores
+  player position, jump height, hurt animation and view bob. Set **Sky speed = 0**
+  to freeze procedural cloud drift too.
 - **Zenith Effects → Skybox:** **Reference Dusk** and **Reference Storm** use
   continuously shaded cloud detail. **Nebula**, **Aurora** and **Cloudscape** remain
   available. Brightness, cloud density and drift speed are adjustable. Vanilla
@@ -67,7 +77,7 @@ under `.minecraft/zenith-client`.
   The addon is bundled inside Zenith, with its own category and identity; no second
   JAR is required. Cosmetic effects stay inbuilt under Render.
 - **Render → Small Totem:** independently scales totems in either hand.
-- **Combat → Aimbot / Aim Assist:** range, field of view, turn speed, line of sight,
+- **Combat → Aimbot / Zenith Aim Assist:** range, field of view, turn speed, line of sight,
   and attack-only settings. Aimbot snaps the view; Aim Assist turns gradually.
   Both respect friends and stay disabled until enabled. Aimbot takes precedence
   when both are enabled. Bow Aimbot is also available from the Meteor base.
@@ -83,7 +93,8 @@ Keys use white press fills and expanding circular rings outside each tile,
 including the jump bar. Short taps are latched so they remain visible between
 rendered frames. The direction indicator and keys dock to the actual hotbar and
 adapt to GUI scale. Dragging them disables docking; **Dock to hotbar** restores it.
-Memory and performance graphs use real JVM heap and frame samples. Target-health
+The default size multiplier doubles their dimensions and text. Memory and performance
+graphs use real JVM heap and frame samples. Target-health
 statistics observe health loss following recent attacks.
 
 ## Built-in addon sources
@@ -94,8 +105,15 @@ separate addon JARs when installing this version. Nora's modules, commands and
 category editor retain their own addon identity. Optional Baritone functions need
 a compatible Baritone installation.
 
-**Glazed is not included:** its published license explicitly forbids redistribution
-and incorporation into distributed projects. Nora's upstream `LegitMaceKill`
+**Glazed stays a separate addon.** Use the official **Glazed 26.2-n-17.2** JAR
+and **Fabric API 0.161.0+26.2** alongside Zenith. Get it from
+[Glazed's release page](https://github.com/realnnpg/glazed/releases/tag/v17.2).
+Do not install another Meteor JAR. Its license does not allow bundling it here.
+Zenith's theme factory now accepts Glazed's custom controls; item/block settings
+also open before joining a world. Nora's **Deepslate ESP** is now named
+**Nora Deepslate ESP**, preventing Glazed from removing it during registration. Zenith Aim Assist also
+keeps a separate `zenith-aim-assist` identity.
+See [compatibility details](docs/GLAZED.md). Nora's upstream `LegitMaceKill`
 module is also excluded because its copied Trouser-Streak source lacks a verified
 redistribution license. Nora's automatic identity/addon telemetry is omitted.
 Exact source revisions, modifications, licenses and dependency sources are recorded
@@ -146,12 +164,14 @@ rather than a different Meteor release. The example is not bundled into Zenith.
 ## Performance
 
 Balanced is the default. Effects use bounded storage and batched additive geometry
-with world depth tests. Soft particle halos are local geometry. The sky uses a
+with world depth tests. Soft particle halos use one quad each with per-fragment Gaussian falloff and star
+rays, batched into one extra depth-tested draw. **Soft glow size/strength** control
+this glow; it does not require a fullscreen bloom pass. The sky uses a
 separate fragment shader with at most 3/4/5 cloud-noise octaves for Low/Balanced/High,
 plus a bounded dome mesh and optional stars. Catppuccin GUI blur is separately
 configurable. Hardware FPS gains are not claimed.
 
-| Quality | Ring segments | Bursts | Sparks | Sky vertices | Stars |
+| Quality | Curve segments | Bursts | Sparks | Sky vertices | Stars |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Low | 24 | 16 | 256 | 833 | 128 |
 | Balanced | 40 | 32 | 768 | 2,813 | 384 |
@@ -178,7 +198,7 @@ gradlew.bat runSmokeClient -PzenithSmoke
 ```
 
 Linux equivalents use `./gradlew`. `build` compiles the client and runs
-**22** frame-history, input-animation, look-motion/docking, sky-noise and visual-budget tests. The optional graphical smoke run needs a display and uses
+**25** frame-history, input-animation, look-motion/docking, sky-noise and visual-budget tests. The optional graphical smoke run needs a display and uses
 its own ignored `run-smoke` directory. It checks module registration, the menu,
 GUI and HUD editor, then creates a uniquely named local flat world to exercise
 HUD sampling, totems, potions, pearls, explosions and death rendering, plus custom
@@ -189,9 +209,10 @@ module, settings editor and live event handlers. It checks sky geometry at all t
 quality levels, live quality changes, shooting
 stars, rain restoration, pearl arrival pulses and cleanup when disabled. Results
 and screenshots go to `build/smoke`; inspect `result.json` as well as the process
-exit code. The test addon is excluded from the distributable JAR. The 2.0.4 run passed **107**
+exit code. The test addon is excluded from the distributable JAR. The 2.0.5 run with Glazed passed **137**
 checks, including the built-in addons, three themes, native library loading, actual
-short key taps, look-dot motion/recentering, silver rain and both reference sky presets.
+short key taps, look-dot motion/recentering, silver rain, both reference sky presets,
+custom panoramas, sky-source switching and Glazed module settings in every theme.
 
 To include the external addon integration checks, build the example first and
 copy its JAR into `run-smoke/mods/` before running the smoke command. See the current

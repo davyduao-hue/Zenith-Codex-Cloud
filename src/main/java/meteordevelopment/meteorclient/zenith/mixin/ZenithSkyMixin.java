@@ -21,12 +21,12 @@ public abstract class ZenithSkyMixin {
         zenith$partialTick=partialTick;
         if(Modules.get()==null)return;
         ZenithEffects fx=Modules.get().get(ZenithEffects.class);
-        if(fx!=null&&fx.isActive()&&fx.purpleSky.get())state.skyColor=fx.skyColor();
+        if(fx!=null&&fx.tintsSky())state.skyColor=fx.skyColor();
     }
     @Inject(method="renderSunMoonAndStars",at=@At("HEAD"),cancellable=true)
     private void zenith$renderSkybox(com.mojang.blaze3d.vertex.PoseStack matrices,float sunAngle,float moonAngle,float starAngle,net.minecraft.world.level.MoonPhase moonPhase,float rainBrightness,float starBrightness,CallbackInfo ci) {
         if(Modules.get()==null)return;
         ZenithEffects fx=Modules.get().get(ZenithEffects.class);
-        if(fx!=null&&fx.hasSkybox()){fx.renderSky(matrices,zenith$partialTick);ci.cancel();}
+        if(fx!=null&&fx.hasSkybox()&&fx.renderSky(matrices,zenith$partialTick))ci.cancel();
     }
 }

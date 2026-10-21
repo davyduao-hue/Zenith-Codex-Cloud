@@ -19,15 +19,16 @@ with zipfile.ZipFile(artifact) as jar:
     assert any(n.startswith('LICENSE_') for n in names)
     assert 'NOTICE.md' in names
     assert not any('/zenith/smoke/' in n for n in names), 'Test addon leaked into client'
-    for name in ['ZenithModulesScreen', 'SkyUniforms', 'ZenithGuiScreen', 'ZenithGuiTheme', 'ZenithDraw', 'UiMotion', 'VisualBudget', 'SkyPattern', 'ZenithSkybox', 'addons/ZenithAddons', 'addons/ZenithCrystalAura', 'addons/ZenithKillAura']:
+    for name in ['SkyTransform', 'WZenithModule', 'WZenithWindow', 'ZenithModulesScreen', 'SkyUniforms', 'ZenithGuiScreen', 'ZenithGuiTheme', 'ZenithDraw', 'UiMotion', 'VisualBudget', 'SkyPattern', 'ZenithSkybox', 'addons/ZenithAddons', 'addons/ZenithCrystalAura', 'addons/ZenithKillAura']:
         assert f'meteordevelopment/meteorclient/zenith/{name}.class' in names, name
     assert not any(n.startswith('dev/zenith/example/') for n in names), 'Example addon was bundled into client'
     for entry in ['me/pindour/catppuccin/CatppuccinAddon.class', 'me/noramibu/tweaks/NoraTweaks.class',
+                  'assets/meteor-client/shaders/zenith_sprite.frag', 'assets/meteor-client/shaders/zenith_panorama.frag',
                   'assets/meteor-client/shaders/zenith_atmosphere.vert', 'assets/meteor-client/shaders/zenith_atmosphere.frag',
                   'META-INF/third-party/README.md', 'META-INF/third-party/catppuccin-addon/LICENSE',
                   'META-INF/third-party/nora-tweaks/LICENSE', 'META-INF/third-party/cubiomes/LICENSE']:
         assert entry in names, entry
-    assert not any('LegitMaceKill' in n or 'Telemetry' in n or n.startswith('com/glazed/') for n in names)
+    assert not any('LegitMaceKill' in n or 'Telemetry' in n or n.startswith(('com/glazed/', 'com/nnpg/glazed/')) for n in names)
     assert 'assets/meteor-client/shaders/zenith_sky.vert' in names
     assert 'uniform Projection' in jar.read('assets/meteor-client/shaders/zenith_sky.vert').decode()
     for entry in metadata['entrypoints']['client']:

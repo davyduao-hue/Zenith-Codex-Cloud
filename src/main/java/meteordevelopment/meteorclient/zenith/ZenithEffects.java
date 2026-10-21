@@ -34,6 +34,7 @@ public final class ZenithEffects extends Module {
     public enum Quality { Low, Balanced, High }
     public enum VisualPreset { ReferenceCrystal, ReferenceSword, ZenithPurple, Custom }
     public enum Palette { VideoReference, ZenithPurple }
+    public enum SkySource { Zenith, Vanilla, ResourcePack, CustomPanorama }
     public enum SkyMood { EmberDusk, RainySilver, Purple, Aurora }
     private final SettingGroup general = settings.getDefaultGroup();
     private final SettingGroup visuals = settings.createGroup("Effects");
@@ -54,6 +55,15 @@ public final class ZenithEffects extends Module {
         .description("Particle emission multiplier; quality caps still apply.").defaultValue(1.5).range(.25,3).sliderRange(.25,3).build());
     private final Setting<Double> effectSize=general.add(new DoubleSetting.Builder().name("effect-size")
         .description("Scale of shockwaves, slashes, coronas and death spirals.").defaultValue(1.15).range(.5,2).sliderRange(.5,2).build());
+    public final Setting<SkySource> skySource=skySettings.add(new EnumSetting.Builder<SkySource>().name("sky-source")
+        .description("Zenith atmosphere, native sky, resource-pack renderer, or a custom 2:1 panorama from an enabled pack.")
+        .defaultValue(SkySource.Zenith).build());
+    public final Setting<String> panoramaTexture=skySettings.add(new StringSetting.Builder().name("panorama-texture")
+        .description("Resource location of a 2:1 equirectangular PNG. Missing textures fall back to the native sky.")
+        .defaultValue("zenith:textures/sky/panorama.png").visible(()->skySource.get()==SkySource.CustomPanorama).build());
+    public final Setting<Double> skyRotation=skySettings.add(new DoubleSetting.Builder().name("sky-rotation")
+        .description("Rotate the custom panorama around the horizon.").defaultValue(0).range(0,360).sliderRange(0,360)
+        .visible(()->skySource.get()==SkySource.CustomPanorama).build());
     public final Setting<Boolean> animatedSky=skySettings.add(new BoolSetting.Builder().name("animated-skybox")
         .description("Red dusk, silver storm, or purple procedural sky rendered behind terrain.").defaultValue(true).build());
     public final Setting<Boolean> replaceClouds=skySettings.add(new BoolSetting.Builder().name("replace-vanilla-clouds")
@@ -65,7 +75,7 @@ public final class ZenithEffects extends Module {
     private final Setting<Double> cloudDensity=skySettings.add(new DoubleSetting.Builder().name("cloud-density")
         .description("Strength of the layered cloud and nebula field.").defaultValue(1.2).range(0,2).sliderRange(0,2).build());
     private final Setting<Double> skySpeed=skySettings.add(new DoubleSetting.Builder().name("sky-speed")
-        .description("Speed of drifting clouds, aurora curtains and shooting stars.").defaultValue(.8).range(.1,2).sliderRange(.1,2).build());
+        .description("Speed of drifting clouds, aurora curtains and shooting stars.").defaultValue(.8).range(0,2).sliderRange(0,2).build());
     private final Setting<Boolean> auroras=skySettings.add(new BoolSetting.Builder().name("aurora-ribbons").description("Animated translucent light curtains across the sky.").defaultValue(false).build());
     private final Setting<Boolean> meteors=skySettings.add(new BoolSetting.Builder().name("shooting-stars").description("Fading meteor heads and tails across the sky.").defaultValue(false).build());
     private final Setting<Boolean> celestial=skySettings.add(new BoolSetting.Builder().name("celestial-halo").description("A soft celestial orb with an inclined luminous ring.").defaultValue(false).build());
@@ -103,6 +113,15 @@ public final class ZenithEffects extends Module {
     private boolean forcedRain;
     private float originalRain, originalThunder;
     private Renderer3D glowRenderer;
+    private meteordevelopment.meteorclient.renderer.MeshBuilder lightSprites;
+    private int softLightCount;
+    public int softLightCount(){return softLightCount;}
+    private final Setting<Double> glowSpread=visuals.add(new DoubleSetting.Builder().name("soft-glow-size")
+        .description("Smooth fragment-shaded glow around impacts, crystals and particles.")
+        .defaultValue(1.65).range(.5,3).sliderRange(.5,3).build());
+    private final Setting<Double> glowOpacity=visuals.add(new DoubleSetting.Builder().name("soft-glow-strength")
+        .description("Brightness of soft glows; terrain still occludes them.")
+        .defaultValue(1.2).range(0,2).sliderRange(0,2).build());
     private ZenithSkybox skybox;
     private boolean outdoors;
     private final double[][] rainGround=new double[16][3];
@@ -120,11 +139,19 @@ public final class ZenithEffects extends Module {
             sky.frames(),sky.vertices(),sky.stars(),sky.meteorFrames(),lightningFrames,rainFrames,trailImpacts);
     }
     public VisualBudget budget(){return VisualBudget.level(quality.get().ordinal());}
-    public boolean hasSkybox(){return isActive()&&purpleSky.get()&&animatedSky.get()&&mc.level!=null&&mc.level.dimensionType().hasSkyLight();}
-    public void renderSky(com.mojang.blaze3d.vertex.PoseStack matrices,float partialTick) {
-        if(!hasSkybox())return;
+    public boolean tintsSky(){return isActive()&&skySource.get()==SkySource.Zenith&&purpleSky.get();}
+    private boolean hasPanorama(){
+        if(skySource.get()!=SkySource.CustomPanorama)return false;
+        var id=net.minecraft.resources.Identifier.tryParse(panoramaTexture.get());
+        return id!=null&&mc.getResourceManager().getResource(id).isPresent();
+    }
+    public boolean hasSkybox(){return isActive()&&(hasPanorama()||tintsSky()&&animatedSky.get())&&mc.level!=null&&mc.level.dimensionType().hasSkyLight();}
+    public boolean renderSky(com.mojang.blaze3d.vertex.PoseStack matrices,float partialTick) {
+        if(!hasSkybox())return false;
         if(skybox==null)skybox=new ZenithSkybox();
+        if(skySource.get()==SkySource.CustomPanorama)return skybox.renderPanorama(budget(),panoramaTexture.get(),skyRotation.get());
         skybox.render(matrices,budget(),(tick+partialTick)/20.0*skySpeed.get(),skyStyle.get(),effectiveSkyMood().ordinal(),skyBrightness.get(),cloudDensity.get(),starfield.get(),auroras.get(),meteors.get(),celestial.get());
+        return true;
     }
 
     public ZenithEffects() {
@@ -138,7 +165,7 @@ public final class ZenithEffects extends Module {
         palette.set(purple ? Palette.ZenithPurple : Palette.VideoReference);
         skyStyle.set(purple ? ZenithSkybox.Style.Nebula : storm ? ZenithSkybox.Style.ReferenceStorm : ZenithSkybox.Style.ReferenceDusk);
         skyMood.set(purple ? SkyMood.Purple : storm ? SkyMood.RainySilver : SkyMood.EmberDusk);
-        animatedSky.set(true); purpleSky.set(true); replaceClouds.set(purple);
+        skySource.set(SkySource.Zenith); animatedSky.set(true); purpleSky.set(true); replaceClouds.set(purple);
         rain.set(storm); starfield.set(purple); auroras.set(purple); meteors.set(purple); celestial.set(false);
         slashes.set(purple); orbitals.set(purple); lightning.set(purple);
         ambientMotes.set(!storm); intensity.set(storm ? 1.15 : 1.5); effectSize.set(1.15);
@@ -289,7 +316,7 @@ public final class ZenithEffects extends Module {
 
     @Override public void onDeactivate() { restoreRain(); clear(); }
     @EventHandler private void onLeave(GameLeftEvent event) { clear(); forcedRain = false; }
-    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;if(skybox!=null)skybox.clear(); }
+    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;softLightCount=0;if(skybox!=null)skybox.clear(); }
     private static int lifetime(int type){return type==2?44:type==1?26:type==0?10:18;}
 
     @EventHandler private void onHand(HeldItemRendererEvent event) {
@@ -312,6 +339,8 @@ public final class ZenithEffects extends Module {
         VisualBudget budget=budget();
         if(glowRenderer==null)glowRenderer=new Renderer3D(MeteorRenderPipelines.WORLD_COLORED_LINES_DEPTH,MeteorRenderPipelines.ZENITH_GLOW);
         Renderer3D r=glowRenderer;r.begin();
+        if(lightSprites==null)lightSprites=new meteordevelopment.meteorclient.renderer.MeshBuilder(MeteorRenderPipelines.ZENITH_SPRITE);
+        lightSprites.begin();softLightCount=0;
         for(Burst burst:bursts)renderBurst(r,burst,time,event.tickDelta,budget.segments());
         for(Entity entity:tracked) {
             if(entity.isRemoved())continue;
@@ -355,6 +384,8 @@ public final class ZenithEffects extends Module {
         }
         atmosphere(r,event,time,budget);
         r.render(event.matrices);
+        meteordevelopment.meteorclient.renderer.MeshRenderer.begin().attachments(mc.gameRenderer.mainRenderTarget())
+            .pipeline(MeteorRenderPipelines.ZENITH_SPRITE).mesh(lightSprites,event.matrices).end();
     }
 
     private void renderBurst(Renderer3D r,Burst burst,double time,double delta,int segments) {
@@ -501,7 +532,12 @@ public final class ZenithEffects extends Module {
         double nx=dy*cz-dz*cy,ny=dz*cx-dx*cz,nz=dx*cy-dy*cx,length=Math.sqrt(nx*nx+ny*ny+nz*nz);
         if(length<.000001)return;nx*=width/length;ny*=width/length;nz*=width/length;
         ribbonEnd.set(color);if(fade)ribbonEnd.a=0;
-        r.quad(ax-nx,ay-ny,az-nz,bx-nx,by-ny,bz-nz,bx+nx,by+ny,bz+nz,ax+nx,ay+ny,az+nz,ribbonEnd,ribbonEnd,color,color);
+        Color transparent=new Color(color.r,color.g,color.b,0);
+        // Across the streak: transparent edge -> luminous center -> transparent edge.
+        r.quad(ax-nx*2.5,ay-ny*2.5,az-nz*2.5,bx-nx*2.5,by-ny*2.5,bz-nz*2.5,
+            bx,by,bz,ax,ay,az,transparent,ribbonEnd,color,transparent);
+        r.quad(ax,ay,az,bx,by,bz,bx+nx*2.5,by+ny*2.5,bz+nz*2.5,
+            ax+nx*2.5,ay+ny*2.5,az+nz*2.5,ribbonEnd,transparent,transparent,color);
     }
 
     private void orbital(Renderer3D r,double x,double y,double z,double radius,double width,double tilt,double yaw,double start,double end,Color color,int segments) {
@@ -514,33 +550,15 @@ public final class ZenithEffects extends Module {
         }
     }
 
-    /** An annulus has a translucent skirt and a white core, avoiding a full-screen shader pass. */
+    /** Fragment-shaded annulus with a white core and smooth halo; one quad per ring. */
     private void ring(Renderer3D r, double x, double y, double z, double radius, double width, Color color, int segments, boolean vertical) {
-        white.set(color.r>color.g?255:228,245,color.r>color.g?226:255,color.a); clear.set(color); clear.a = 0;
-        for (int i = 0; i < segments; i++) {
-            double a = i * Math.TAU / segments, b = (i+1) * Math.TAU / segments;
-            double ax = Math.cos(a), az = Math.sin(a), bx = Math.cos(b), bz = Math.sin(b);
-            for (int band = 0; band < 4; band++) {
-                double inner = Math.max(.001,radius + (band-2)*width), outer = Math.max(.002,inner+width);
-                Color in = switch (band) { case 0 -> clear; case 1, 3 -> color; default -> white; };
-                Color out = switch (band) { case 0, 2 -> color; case 1 -> white; default -> clear; };
-                if (vertical) {
-                    double arx=cameraRightX*ax+cameraUpX*az,ary=cameraUpY*az,arz=cameraRightZ*ax+cameraUpZ*az;
-                    double brx=cameraRightX*bx+cameraUpX*bz,bry=cameraUpY*bz,brz=cameraRightZ*bx+cameraUpZ*bz;
-                    r.quad(x+arx*inner,y+ary*inner,z+arz*inner,
-                        x+brx*inner,y+bry*inner,z+brz*inner,
-                        x+brx*outer,y+bry*outer,z+brz*outer,
-                        x+arx*outer,y+ary*outer,z+arz*outer,in,out,out,in);
-                } else {
-                    r.quad(x+ax*inner,y,z+az*inner,x+bx*inner,y,z+bz*inner,
-                        x+bx*outer,y,z+bz*outer,x+ax*outer,y,z+az*outer,in,out,out,in);
-                }
-            }
-        }
+        // Analytic ring profile: smooth at any distance without polygon edges or segment seams.
+        softSprite(x,y,z,radius*1.2,color,!vertical,2);
     }
 
     /** Four slim tapered rays and a compact glow form the recording's moving star glints. */
     private void starFlash(Renderer3D r,double x,double y,double z,double size,Color color) {
+        softSprite(x,y,z,size*2,color,false,1);
         soft.set(color);soft.a=color.a/3;
         particle(r,x,y,z,size*.65,soft);
         for(int i=0;i<4;i++) {
@@ -551,17 +569,25 @@ public final class ZenithEffects extends Module {
     }
 
     private void particle(Renderer3D r,double x,double y,double z,double size,Color color) {
-        clear.set(color);clear.a=0;white.set(255,248,238,color.a);
-        for(int i=0;i<8;i++) {
-            double a=i*Math.TAU/8,b=(i+1)*Math.TAU/8;
-            r.triangles.ensureTriCapacity();
-            int center=r.triangles.vec3(x,y,z).color(white).next();
-            int first=r.triangles.vec3(x+(cameraRightX*Math.cos(a)+cameraUpX*Math.sin(a))*size,
-                y+cameraUpY*Math.sin(a)*size,z+(cameraRightZ*Math.cos(a)+cameraUpZ*Math.sin(a))*size).color(clear).next();
-            int second=r.triangles.vec3(x+(cameraRightX*Math.cos(b)+cameraUpX*Math.sin(b))*size,
-                y+cameraUpY*Math.sin(b)*size,z+(cameraRightZ*Math.cos(b)+cameraUpZ*Math.sin(b))*size).color(clear).next();
-            r.triangles.triangle(center,first,second);
+        softSprite(x,y,z,size*2.4,color,false,0);
+    }
+
+    /** One batched quad per light. Radial falloff and star rays are evaluated per fragment. */
+    private void softSprite(double x,double y,double z,double size,Color color,boolean ground,int shape) {
+        if(lightSprites==null||!lightSprites.isBuilding()||size<=0||color.a<=0)return;
+        if(shape!=2)size*=glowSpread.get();
+        var mesh=lightSprites;mesh.ensureQuadCapacity();
+        Color c=new Color(color.r,color.g,color.b,(int)Math.min(255,color.a*glowOpacity.get()));
+        int start=-1;
+        for(int i=0;i<4;i++) {
+            double u=i==0||i==1?0:1,v=i==0||i==3?0:1;
+            double rx=(u*2-1)*size,ry=(v*2-1)*size;
+            double dx=ground?rx:cameraRightX*rx+cameraUpX*ry;
+            double dy=ground?0:cameraUpY*ry,dz=ground?ry:cameraRightZ*rx+cameraUpZ*ry;
+            int vertex=mesh.vec3(x+dx,y+dy,z+dz).vec2(u+shape*2,v).color(c).next();
+            if(start<0)start=vertex;
         }
+        mesh.quad(start,start+1,start+2,start+3);softLightCount++;
     }
 
     /** A low-alpha hemispherical shell gives crystal blasts volume without a fullscreen pass. */
@@ -582,23 +608,10 @@ public final class ZenithEffects extends Module {
         }
     }
     private void halo(Renderer3D r,double x,double y,double z,double radius,int alpha,int kind,int segments,boolean horizontal) {
-        colorFor(kind,alpha);clear.set(tint);clear.a=0;white.set(255,245,226,alpha);
-        if(kind==0)white.set(255,248,235,alpha);
-        else if(kind==2)white.set(224,245,255,alpha);
-        else if(kind>=3)white.set(242,224,255,alpha);
-        for(int i=0;i<segments;i++) {
-            double a=i*Math.TAU/segments,b=(i+1)*Math.TAU/segments;
-            double ax,bx,ay,by,az,bz;
-            if(horizontal){ax=Math.cos(a)*radius;az=Math.sin(a)*radius;ay=0;bx=Math.cos(b)*radius;bz=Math.sin(b)*radius;by=0;}
-            else {ax=(cameraRightX*Math.cos(a)+cameraUpX*Math.sin(a))*radius;
-                ay=cameraUpY*Math.sin(a)*radius;az=(cameraRightZ*Math.cos(a)+cameraUpZ*Math.sin(a))*radius;
-                bx=(cameraRightX*Math.cos(b)+cameraUpX*Math.sin(b))*radius;
-                by=cameraUpY*Math.sin(b)*radius;bz=(cameraRightZ*Math.cos(b)+cameraUpZ*Math.sin(b))*radius;}
-            r.triangles.ensureTriCapacity();
-            int c=r.triangles.vec3(x,y,z).color(white).next(),v1=r.triangles.vec3(x+ax,y+ay,z+az).color(clear).next(),v2=r.triangles.vec3(x+bx,y+by,z+bz).color(clear).next();
-            r.triangles.triangle(c,v1,v2);
-        }
+        colorFor(kind,alpha);
+        softSprite(x,y,z,radius,tint,horizontal,0);
     }
+
     private void shard(Renderer3D r,double x,double y,double z,double size,double angle,Color color) {
         double dx=Math.cos(angle)*size,dy=Math.sin(angle)*size,ex=-dy*.35,ey=dx*.35;
         double ax=cameraRightX*(dx+ex)+cameraUpX*(dy+ey),ay=cameraUpY*(dy+ey),az=cameraRightZ*(dx+ex)+cameraUpZ*(dy+ey);

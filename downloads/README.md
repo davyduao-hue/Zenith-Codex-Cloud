@@ -1,9 +1,8 @@
 # Download Zenith Client 2.0
 
-Current update: **2.0.4 for Minecraft 26.2** — built-in Catppuccin and Nora Tweaks,
-selectable Zenith 2.0 / Catppuccin / Meteor themes, restored title-screen integration,
-camera-direction dot, white key-press rings, red-dusk/silver-storm skies and revised
-reference combat effects. Glazed is excluded because its license forbids distribution.
+Current update: **2.0.5 for Minecraft 26.2** — Glazed compatibility fixes,
+larger HUD, distinct animated purple controls, smooth shader glows, selectable sky
+sources and camera-stable custom panoramas. Glazed remains a separate addon.
 
 - [Client JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-MC26.2.jar)
 - [Buildable source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-Source.zip)
@@ -19,3 +18,8 @@ Select **Right Shift → GUI → Theme** for Zenith 2.0, Catppuccin or Meteor.
 Remove separate Catppuccin and Nora Tweaks JARs. Under **Zenith Effects**, choose
 **Visual preset → Reference Crystal / Reference Sword** to apply the new look.
 A buildable addon example is included under `examples/meteor-addon`.
+
+For Glazed, install its official **26.2-n-17.2** JAR plus **Fabric API 0.161.0+26.2**.
+Download it from [Glazed's author](https://github.com/realnnpg/glazed/releases/tag/v17.2).
+HUD widgets have a **Size multiplier**; **Zenith Effects → Skybox → Sky source**
+selects Zenith, Vanilla, Resource Pack or Custom Panorama.

@@ -61,7 +61,9 @@ import me.pindour.catppuccin.gui.themes.catppuccin.widgets.settings.WCatppuccinL
 import net.minecraft.client.resources.language.I18n;
 //? }
 
-public class CatppuccinSettingsWidgetFactory extends SettingsWidgetFactory {
+// Inherit Meteor's default factory so external addons' constructor mixins can register
+// their custom setting types before this theme replaces the built-in widget styles.
+public class CatppuccinSettingsWidgetFactory extends meteordevelopment.meteorclient.gui.DefaultSettingsWidgetFactory {
     private static final SettingColor WHITE = new SettingColor();
     private final CatppuccinGuiTheme theme;
 
@@ -404,18 +406,18 @@ public class CatppuccinSettingsWidgetFactory extends SettingsWidgetFactory {
 
         title(list, setting);
 
-        WItem item = list.add(theme.item(setting.get().asItem().getDefaultInstance())).widget();
+        WItem item = list.add(theme.item(meteordevelopment.meteorclient.utils.render.DisplayItemUtils.toStack(setting.get().asItem()))).widget();
 
         WButton select = list.add(theme.button("Select")).right().widget();
         select.minWidth = theme.textWidth(select.getText()) * 2;
         select.action = () -> {
             BlockSettingScreen screen = new BlockSettingScreen(theme, setting);
-            screen.onClosed(() -> item.set(setting.get().asItem().getDefaultInstance()));
+            screen.onClosed(() -> item.set(meteordevelopment.meteorclient.utils.render.DisplayItemUtils.toStack(setting.get().asItem())));
 
             mc.gui.setScreen(screen);
         };
 
-        reset(list, setting, () -> item.set(setting.get().asItem().getDefaultInstance()), () -> list.mouseOver);
+        reset(list, setting, () -> item.set(meteordevelopment.meteorclient.utils.render.DisplayItemUtils.toStack(setting.get().asItem())), () -> list.mouseOver);
     }
 
     private void blockPosW(WTable table, BlockPosSetting setting) {
@@ -439,13 +441,13 @@ public class CatppuccinSettingsWidgetFactory extends SettingsWidgetFactory {
     private void itemW(WTable table, ItemSetting setting) {
         WHorizontalList list = table.add(theme.horizontalList()).expandX().widget();
 
-        WItem item = theme.item(setting.get().asItem().getDefaultInstance());
+        WItem item = theme.item(meteordevelopment.meteorclient.utils.render.DisplayItemUtils.toStack(setting.get().asItem()));
 
         WButton select = list.add(theme.button("Select")).widget();
         select.minWidth = theme.textWidth(select.getText()) * 2;
         select.action = () -> {
             ItemSettingScreen screen = new ItemSettingScreen(theme, setting);
-            screen.onClosed(() -> item.set(setting.get().getDefaultInstance()));
+            screen.onClosed(() -> item.set(meteordevelopment.meteorclient.utils.render.DisplayItemUtils.toStack(setting.get())));
 
             mc.gui.setScreen(screen);
         };
@@ -455,7 +457,7 @@ public class CatppuccinSettingsWidgetFactory extends SettingsWidgetFactory {
         title(list, setting);
 
 
-        reset(list, setting, () -> item.set(setting.get().getDefaultInstance()));
+        reset(list, setting, () -> item.set(meteordevelopment.meteorclient.utils.render.DisplayItemUtils.toStack(setting.get())));
     }
 
     private void itemListW(WTable table, ItemListSetting setting) {

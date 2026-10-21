@@ -27,7 +27,7 @@ public abstract class FogRendererMixin {
             return ambience.fogColor.get().getVec4f();
         }
         var fx=Modules.get().get(meteordevelopment.meteorclient.zenith.ZenithEffects.class);
-        if(fx!=null&&fx.isActive()&&fx.purpleSky.get())return fx.fogTint(fogColor);
+        if(fx!=null&&fx.tintsSky())return fx.fogTint(fogColor);
 
         return fogColor;
     }

@@ -82,4 +82,20 @@ class UiMotionTest {
         var b=UiMotion.dock(1280,720,4,132,153,1,true);
         assertFalse(a.raised());assertTrue(b.raised());assertTrue(b.y()<a.y());
     }
+    @Test void doubledWidgetsStayApartAndClearTheGraphsAtCommonResolutions() {
+        int[][] screens={{854,480,2},{1280,720,2},{1920,1080,3},{2560,1440,4},{3840,2160,4}};
+        for(int[] screen:screens) {
+            double scale=2*Math.min(1,Math.max(.6,screen[0]/1280.0));
+            double w=132*scale,h=153*scale;
+            var left=UiMotion.dock(screen[0],screen[1],screen[2],w,h,scale,true);
+            var right=UiMotion.dock(screen[0],screen[1],screen[2],w,h,scale,false);
+            assertTrue(left.x()+w<right.x());
+            for(var pos:new UiMotion.Position[]{left,right}) {
+                assertTrue(pos.x()>=0&&pos.x()+w<=screen[0]);
+                assertTrue(pos.y()>=0&&pos.y()+h<=screen[1]);
+                boolean overGraph=pos.x()<18+235*scale||pos.x()+w>screen[0]-18-235*scale;
+                if(overGraph)assertTrue(pos.y()+h<screen[1]-18-96*scale);
+            }
+        }
+    }
 }

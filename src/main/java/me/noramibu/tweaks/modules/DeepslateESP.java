@@ -42,7 +42,7 @@ public class DeepslateESP extends Module {
     private volatile boolean renderListDirty = true;
 
     public DeepslateESP() {
-        super(NoraTweaks.CATEGORY, "deepslate-esp", "Highlights deepslate with non-Y axis (likely player-placed).");
+        super(NoraTweaks.CATEGORY, "nora-deepslate-esp", "Highlights deepslate with non-Y axis (likely player-placed).");
     }
 
     @Override

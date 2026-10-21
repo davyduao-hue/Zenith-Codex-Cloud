@@ -57,6 +57,9 @@ public final class ZenithHud extends HudElement {
     private final SettingGroup general = settings.getDefaultGroup();
     private final Setting<Double> scale = general.add(new DoubleSetting.Builder().name("scale")
         .description("Widget scale independent of the game GUI.").defaultValue(initialScale()).range(.5, 3).sliderRange(.5, 2).build());
+    private final Setting<Double> enlargement = general.add(new DoubleSetting.Builder().name("size-multiplier")
+        .description("Two times the original HUD size by default, including existing saved layouts.")
+        .defaultValue(2).range(.5, 3).sliderRange(1, 3).build());
     private final Setting<SettingColor> accent = general.add(new ColorSetting.Builder().name("accent")
         .description("Purple highlights and graph lines.").defaultValue(new SettingColor(183, 117, 255)).build());
     private final Setting<SettingColor> background = general.add(new ColorSetting.Builder().name("background")
@@ -138,8 +141,9 @@ public final class ZenithHud extends HudElement {
 
     private ZenithHud(Kind kind) { super(INFOS.get(kind)); this.kind = kind; }
     private static double initialScale() { return Math.min(1,Math.max(.6,meteordevelopment.meteorclient.utils.Utils.getWindowWidth()/1280.0)); }
-    private double fontScale(double n) { return Hud.get().hasCustomFont()?Math.sqrt(n*1.35*scale.get()):n*scale.get(); }
-    private double s(double n) { return n * scale.get(); }
+    private double uiScale() { return scale.get() * enlargement.get(); }
+    private double fontScale(double n) { return Hud.get().hasCustomFont()?Math.sqrt(n*1.35*uiScale()):n*uiScale(); }
+    private double s(double n) { return n * uiScale(); }
     private void text(HudRenderer r, String text, double dx, double dy, Color color, double size) {
         r.text(text, x+s(dx), y+s(dy), color, shadow.get(), fontScale(size));
     }
@@ -147,11 +151,7 @@ public final class ZenithHud extends HudElement {
         r.quad(x+s(dx), y+s(dy), s(w), s(h), color);
     }
     private void line(HudRenderer r, double x1,double y1,double x2,double y2,Color color) {
-        double len=Math.hypot(x2-x1,y2-y1);
-        if(len<.001)return;
-        double nx=-(y2-y1)/len*.6,ny=(x2-x1)/len*.6;
-        r.triangle(x+s(x1+nx),y+s(y1+ny),x+s(x2+nx),y+s(y2+ny),x+s(x2-nx),y+s(y2-ny),color);
-        r.triangle(x+s(x1+nx),y+s(y1+ny),x+s(x2-nx),y+s(y2-ny),x+s(x1-nx),y+s(y1-ny),color);
+        ZenithDraw.line(r,x+s(x1),y+s(y1),x+s(x2),y+s(y2),s(1.1),color);
     }
     private void panel(HudRenderer r, double w, double h) {
         ZenithDraw.rounded(r,x-s(2),y-s(2),s(w+4),s(h+4),s(8),new Color(0,0,0,24));
@@ -162,14 +162,15 @@ public final class ZenithHud extends HudElement {
     private void dockToHotbar() {
         if(!dock.get()||(kind!=Kind.Radar&&kind!=Kind.Keys))return;
         UiMotion.Position p=UiMotion.dock(meteordevelopment.meteorclient.utils.Utils.getWindowWidth(),
-            meteordevelopment.meteorclient.utils.Utils.getWindowHeight(),mc.getWindow().getGuiScale(),getWidth(),getHeight(),scale.get(),kind==Kind.Radar);
+            meteordevelopment.meteorclient.utils.Utils.getWindowHeight(),mc.getWindow().getGuiScale(),getWidth(),getHeight(),uiScale(),kind==Kind.Radar);
         box.xAnchor=XAnchor.Left;box.yAnchor=YAnchor.Top;box.setPos((int)Math.round(p.x()),(int)Math.round(p.y()));updatePos();
     }
     @Override public void move(int dx,int dy) {if(kind==Kind.Radar||kind==Kind.Keys)dock.set(false);super.move(dx,dy);}
     private void circle(HudRenderer r, double cx,double cy,double radius,double progress,Color color) {
-        int steps = Math.max(1,(int)(48*Math.min(1,Math.max(0,progress))));
+        int segments = Math.max(64, (int) Math.ceil(radius * uiScale() * 1.5));
+        int steps = Math.max(1,(int)(segments*Math.min(1,Math.max(0,progress))));
         for (int i=0;i<steps;i++) {
-            double a=-Math.PI/2+i*Math.TAU/48,b=-Math.PI/2+(i+1)*Math.TAU/48;
+            double a=-Math.PI/2+i*Math.TAU/segments,b=-Math.PI/2+(i+1)*Math.TAU/segments;
             line(r,cx+Math.cos(a)*radius,cy+Math.sin(a)*radius,cx+Math.cos(b)*radius,cy+Math.sin(b)*radius,color);
         }
     }
@@ -200,7 +201,7 @@ public final class ZenithHud extends HudElement {
         setSize(s(280),s(52)); panel(r,280,52);
         star(r,x+s(22),y+s(23),s(13),System.nanoTime()/1e9,accent.get());
         text(r,"Zenith",44,7,TEXT,.9); text(r,"2.0",137,11,accent.get(),.55);
-        text(r,MinecraftAccessor.meteor$getFps()+" FPS  /  "+LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),44,31,MUTED,.5);
+        text(r,MinecraftAccessor.meteor$getFps()+" FPS  /  "+LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")),44,30,TEXT,.65);
     }
 
     private void graph(HudRenderer r, boolean memory) {
@@ -210,7 +211,7 @@ public final class ZenithHud extends HudElement {
         long used=(runtime.totalMemory()-runtime.freeMemory())/1048576,max=runtime.maxMemory()/1048576;
         text(r,memory?"MEMORY":"PERFORMANCE",12,10,MUTED,.45);
         String value=memory?used+" / "+max+" MB":MinecraftAccessor.meteor$getFps()+" FPS";
-        double vw=r.textWidth(value,false,fontScale(.55))/scale.get();
+        double vw=r.textWidth(value,false,fontScale(.55))/uiScale();
         text(r,value,223-vw,8,TEXT,.55);
         FrameHistory history=memory?data.memory:data.frames;
         for (int i=1;i<4;i++) rect(r,12,30+i*12,211,1,new Color(220,210,240,12));
@@ -285,11 +286,11 @@ public final class ZenithHud extends HudElement {
             ZenithDraw.rounded(r,x+s(dx+w/2-21),y+s(dy+h/2-1+bounce),s(42),s(2),s(1),foreground);
             return;
         }
-        double width=r.textWidth(label,false,fontScale(.55))/scale.get();
+        double width=r.textWidth(label,false,fontScale(.55))/uiScale();
         text(r,label,dx+(w-width)/2,dy+(h>35?7:h/2-5)+bounce,foreground,.55);
         if(showDetails.get()&&(index==4||index==5)) {
             String cps=Zenith.INSTANCE.cps(index==5)+" CPS";
-            double tw=r.textWidth(cps,false,fontScale(.44))/scale.get();
+            double tw=r.textWidth(cps,false,fontScale(.44))/uiScale();
             text(r,cps,dx+(w-tw)/2,dy+23+bounce,ZenithDraw.mix(MUTED,new Color(58,56,62),amount),.44);
         }
     }

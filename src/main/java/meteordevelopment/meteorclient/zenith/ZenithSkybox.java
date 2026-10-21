@@ -45,8 +45,11 @@ public final class ZenithSkybox {
     public void render(PoseStack matrices,VisualBudget budget,double time,Style style,int mood,double brightness,double density,boolean stars,boolean aurora,boolean meteors,boolean celestial) {
         boolean was3D=Utils.rendering3D;
         Utils.rendering3D=false;
-        try {renderDome(matrices,budget,time,style,mood,brightness,density,stars,aurora,meteors,celestial);}
-        finally {Utils.rendering3D=was3D;}
+        RenderSystem.getModelViewStack().pushMatrix().identity();
+        PoseStack rotation=new PoseStack();
+        rotation.last().pose().set(SkyTransform.rotation(mc.gameRenderer.mainCamera().yRot(),mc.gameRenderer.mainCamera().xRot()));
+        try {renderDome(rotation,budget,time,style,mood,brightness,density,stars,aurora,meteors,celestial);}
+        finally {RenderSystem.getModelViewStack().popMatrix();Utils.rendering3D=was3D;}
     }
     private void renderDome(PoseStack matrices,VisualBudget budget,double time,Style style,int mood,double brightness,double density,boolean stars,boolean aurora,boolean meteors,boolean celestial) {
         cx=cy=cz=0;
@@ -116,6 +119,37 @@ public final class ZenithSkybox {
         MeshRenderer.begin().attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_SKY)
             .mesh(r.triangles,matrices).uniform("Projection",RenderSystem.getProjectionMatrixBuffer()).end();
         frames++;vertices=directions.length;
+    }
+
+
+    /** Packs supply a normal ResourceManager texture; no native files or pack-specific code is executed. */
+    public boolean renderPanorama(VisualBudget budget,String location,double heading) {
+        var id=net.minecraft.resources.Identifier.tryParse(location);
+        if(id==null||mc.getResourceManager().getResource(id).isEmpty())return false;
+        var texture=mc.getTextureManager().getTexture(id);
+        boolean was3D=Utils.rendering3D;Utils.rendering3D=false;
+        RenderSystem.getModelViewStack().pushMatrix().identity();
+        try {
+            Renderer3D r=renderer;r.begin();
+            int cols=budget.skyColumns(),rows=budget.skyRows();
+            r.triangles.ensureCapacity((cols+1)*(rows+1),cols*rows*6);
+            for(int row=0;row<=rows;row++)for(int col=0;col<=cols;col++) {
+                double[] d=direction(col*Math.TAU/cols,-Math.PI/2+Math.PI*row/rows);
+                r.triangles.vec3(d[0]*RADIUS,d[1]*RADIUS,d[2]*RADIUS).color(Color.WHITE).next();
+            }
+            for(int row=0;row<rows;row++)for(int col=0;col<cols;col++) {
+                int a=row*(cols+1)+col;r.triangles.quad(a,a+1,a+cols+2,a+cols+1);
+            }
+            r.lines.end();
+            var rotation=SkyTransform.rotation(mc.gameRenderer.mainCamera().yRot(),mc.gameRenderer.mainCamera().xRot()).rotateY((float)Math.toRadians(heading));
+            MeshRenderer.begin().attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_PANORAMA)
+                .mesh(r.triangles,rotation).uniform("Projection",RenderSystem.getProjectionMatrixBuffer())
+                .sampler("u_Texture",texture.getTextureView(),RenderSystem.getSamplerCache().getSampler(
+                    com.mojang.blaze3d.textures.AddressMode.REPEAT,com.mojang.blaze3d.textures.AddressMode.CLAMP_TO_EDGE,
+                    com.mojang.blaze3d.textures.FilterMode.LINEAR,com.mojang.blaze3d.textures.FilterMode.LINEAR,false)).end();
+            frames++;vertices=(cols+1)*(rows+1);starCount=0;
+            return true;
+        } finally {RenderSystem.getModelViewStack().popMatrix();Utils.rendering3D=was3D;}
     }
 
     private void shade(Color out,double[] d,double time,Style style,int mood,double brightness,double density) {

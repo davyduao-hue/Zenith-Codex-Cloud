@@ -127,6 +127,26 @@ public abstract class MeteorRenderPipelines {
         .build()
     );
 
+    public static final RenderPipeline ZENITH_PANORAMA = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/zenith_panorama"))
+        .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/zenith_atmosphere.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/zenith_panorama.frag"))
+        .withBindGroupLayout(BindGroupLayout.builder().withUniform("Projection",UniformType.UNIFORM_BUFFER).withSampler("u_Texture").build())
+        .withDepthStencilState(new DepthStencilState(DepthStencilState.DEFAULT.depthTest(), false))
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT)).withCull(false).build()
+    );
+
+    public static final RenderPipeline ZENITH_SPRITE = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/zenith_sprite"))
+        .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/pos_tex_color.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/zenith_sprite.frag"))
+        .withDepthStencilState(new DepthStencilState(DepthStencilState.DEFAULT.depthTest(), false))
+        .withColorTargetState(new ColorTargetState(new BlendFunction(com.mojang.blaze3d.platform.BlendFactor.SRC_ALPHA, com.mojang.blaze3d.platform.BlendFactor.ONE)))
+        .withCull(false).build()
+    );
+
     public static final RenderPipeline UI_COLORED = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/ui_colored"))
         .withVertexBinding(0, MeteorVertexFormats.POS2_COLOR).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)

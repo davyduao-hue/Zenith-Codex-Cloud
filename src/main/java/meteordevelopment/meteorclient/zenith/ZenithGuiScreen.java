@@ -36,7 +36,7 @@ public final class ZenithGuiScreen extends TabScreen {
     private String query="";
     private boolean searching,binding,closing;
     private double moduleScroll,settingScroll,open,slide=1,navY;
-    private double moduleScrollTarget,settingScrollTarget;
+    private double moduleScrollTarget,settingScrollTarget,navScroll,navScrollTarget;
     private String cachedQuery;
     private Category cachedCategory;
     private List<Module> cachedModules;
@@ -111,11 +111,15 @@ public final class ZenithGuiScreen extends TabScreen {
         text(r,"WORKSPACE",19,79,9,MUTED);
         int index=0;double targetNav=104;
         for(Category c:Modules.loopCategories()) {if(c==category)targetNav=104+index*34;index++;}
+        navScrollTarget=UiMotion.clamp(navScrollTarget,0,Math.max(0,index*34-272));
+        navScroll=UiMotion.approach(navScroll,navScrollTarget,18,dt);
+        targetNav-=navScroll;
         navY=UiMotion.approach(navY==0?targetNav:navY,targetNav,18,dt);
-        box(r,10,navY,146,29,7,new Color(57,31,84));box(r,10,navY+7,3,15,1,PURPLE);
+        if(navY>=104&&navY+29<=390){box(r,10,navY,146,29,7,new Color(57,31,84));box(r,10,navY+7,3,15,1,PURPLE);}
         index=0;
         for(Category c:Modules.loopCategories()) {
-            double y=104+index++*34;
+            double y=104+index++*34-navScroll;
+            if(y<103.5||y+29>390)continue;
             double hover=state("nav:"+c.name,over(10,y,146,29)?1:0,dt);
             if(c!=category)box(r,10,y,146,29,7,new Color(65,38,91,(int)(60*hover)));
             text(r,c.name,23,y+8,12,c==category?WHITE:MUTED);
@@ -232,6 +236,7 @@ public final class ZenithGuiScreen extends TabScreen {
     @Override public boolean mouseReleased(MouseButtonEvent event){drag=null;return true;}
     @Override public boolean mouseScrolled(double x,double y,double horizontal,double vertical) {
         double px=(x*mc.getWindow().getGuiScale()-ox)/scale;
+        if(px<166){navScrollTarget=Math.max(0,navScrollTarget-vertical*34);return true;}
         if(px>516)settingScrollTarget=Math.max(0,settingScrollTarget-vertical*32);else moduleScrollTarget=Math.max(0,moduleScrollTarget-vertical*42);
         return true;
     }

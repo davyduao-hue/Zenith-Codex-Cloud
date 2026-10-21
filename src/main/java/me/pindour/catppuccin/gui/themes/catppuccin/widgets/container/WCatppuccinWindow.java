@@ -194,6 +194,13 @@ public class WCatppuccinWindow extends WWindow implements CatppuccinWidget {
         return new WCatppuccinHeader(icon);
     }
 
+    /** Extension point for native themes which retain category dragging and expansion. */
+    protected void renderHeaderBackground(WWidget header,double cornerProgress) {
+        roundedRect().bounds(header)
+            .radii(radius(),radius(),(float)(radius()*(1-cornerProgress)),(float)(radius()*(1-cornerProgress)))
+            .color(theme().crustColor()).render();
+    }
+
     private class WCatppuccinHeader extends WHeader {
         private WHorizontalList list;
         private WTriangle openIndicator;
@@ -246,14 +253,7 @@ public class WCatppuccinWindow extends WWindow implements CatppuccinWidget {
                 cornerAnimation.start(Direction.BACKWARDS);
             }
 
-            // Background
-            roundedRect().bounds(this)
-                         .radii(radius(),
-                                radius(),
-                                (float) (radius() * (1 - cornerProgress)),
-                                (float) (radius() * (1 - cornerProgress)))
-                         .color(theme.crustColor())
-                         .render();
+            renderHeaderBackground(this,cornerProgress);
 
             // Update open indicator
             openIndicator.rotation = 90 + 90 * animation.getProgress();

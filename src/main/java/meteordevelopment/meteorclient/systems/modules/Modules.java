@@ -367,7 +367,10 @@ public class Modules extends System<Modules> {
         ListTag modulesTag = tag.getListOrEmpty("modules");
         for (Tag moduleTagI : modulesTag) {
             CompoundTag moduleTag = (CompoundTag) moduleTagI;
-            Module module = get(moduleTag.getStringOr("name", ""));
+            String savedName = moduleTag.getStringOr("name", "");
+            Module module = get(savedName);
+            if (module == null && savedName.equals("deepslate-esp")) module = get("nora-deepslate-esp");
+            if (module == null && savedName.equals("aim-assist")) module = get("zenith-aim-assist");
             if (module != null) module.fromTag(moduleTag);
         }
 

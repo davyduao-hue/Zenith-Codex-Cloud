@@ -65,8 +65,13 @@ public final class UiMotion {
         double graphEdge=18+235*scale;
         boolean raised=left?x<graphEdge+gap:x+widgetWidth>width-graphEdge-gap;
         if(raised) {
-            x=left?Math.max(x,graphEdge+gap):Math.min(x,width-graphEdge-gap-widgetWidth);
-            y=height-24.0*guiScale-widgetHeight-gap;
+            // On small windows, stack above the graphs instead of pushing both widgets
+            // into the middle. At larger sizes the pair still sits beside the hotbar.
+            double leftSlot=graphEdge+gap, rightSlot=width-graphEdge-gap-widgetWidth;
+            boolean room=leftSlot+widgetWidth+gap<=rightSlot;
+            x=room?(left?Math.max(x,leftSlot):Math.min(x,rightSlot)):(left?18:width-18-widgetWidth);
+            y=room?height-24.0*guiScale-widgetHeight-gap:
+                height-18-96*scale-gap-widgetHeight;
         }
         return new Position(clamp(x,8,Math.max(8,width-widgetWidth-8)),clamp(y,8,Math.max(8,height-widgetHeight-8)),raised);
     }

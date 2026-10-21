@@ -20,7 +20,9 @@ Install: Minecraft 26.2, Fabric Loader 0.19.3 or newer, Java 25.
 Put Zenith-Client-2.0-MC26.2.jar in your Fabric profile's mods folder.
 Replace your previous Zenith or Meteor JAR; keep only one installed.
 Remove separate Catppuccin and Nora Tweaks addon JARs: their permitted source
-is now built in. Glazed is not included because its license forbids redistribution.
+is now built in. Glazed stays separate: install its official 26.2-n-17.2 JAR and
+Fabric API 0.161.0+26.2 alongside Zenith. Do not add a separate Meteor JAR.
+Glazed download: https://github.com/realnnpg/glazed/releases/tag/v17.2
 Right Shift > GUI > Theme chooses Zenith 2.0, Catppuccin, or Meteor.
 Zenith 2.0 uses rounded purple category windows; Layout > Dashboard restores
 the previous full dashboard. HUD > Edit opens the widget editor.
@@ -29,6 +31,10 @@ Reference Sword (silver storm), or Zenith Purple. Select a preset after upgradin
 to apply the new defaults to an existing settings profile.
 The former radar is now Look Direction, a mint camera-motion dot with L/R counters.
 Keys show press/release fills and expanding white rings, including short clicks.
+HUD widgets default to double size; each widget's Size multiplier adjusts it.
+Skybox > Sky source selects Zenith, Vanilla, Resource Pack or Custom Panorama.
+See docs/SKYBOXES.md in the source for custom panorama resource packs.
+Soft glow size/strength adjust the smooth shader lights.
 Effect density and Quality control particle emission and performance.
 Zenith Addons contains the custom combat modules; Nora Tweaks has its own category.
 

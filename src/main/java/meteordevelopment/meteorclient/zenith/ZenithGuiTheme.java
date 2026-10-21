@@ -57,6 +57,12 @@ public final class ZenithGuiTheme extends CatppuccinGuiTheme {
         return result == null ? super.getColor(color) : result;
     }
 
+    @Override public meteordevelopment.meteorclient.gui.widgets.containers.WWindow window(meteordevelopment.meteorclient.gui.widgets.WWidget icon,String title) {
+        return w(new WZenithWindow(icon,title));
+    }
+    @Override public meteordevelopment.meteorclient.gui.widgets.WWidget module(meteordevelopment.meteorclient.systems.modules.Module module,String title) {
+        return w(new WZenithModule(module,title));
+    }
     @Override public TabScreen modulesScreen(){
         return layout.get() == Layout.Dashboard ? new ZenithGuiScreen(this) : new ZenithModulesScreen(this);
     }

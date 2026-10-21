@@ -60,7 +60,7 @@ public class CatppuccinModulesScreen extends TabScreen {
         gridSize = theme.snappingGridSize.get();
 
         // Categories
-        controller = add(new WCategoryController()).widget();
+        controller = add(createController()).widget();
 
         // Help
         WVerticalList help = add(theme.verticalList()).pad(4).bottom().widget();
@@ -77,6 +77,8 @@ public class CatppuccinModulesScreen extends TabScreen {
         if (theme.modulesWatermark.get())
             add(theme.label(theme.name.equals("Zenith 2.0") ? "Zenith 2.0 / Catppuccin by Pindour" : "Catppuccin Theme by Pindour")).bottom().right();
     }
+
+    protected WCategoryController createController() { return new WCategoryController(); }
 
     @Override
     protected void init() {

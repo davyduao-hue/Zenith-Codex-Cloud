@@ -21,7 +21,7 @@ public abstract class CloudRendererMixin {
     private int zenith$cloudMood(int color) {
         if(Modules.get()==null)return color;
         var fx=Modules.get().get(meteordevelopment.meteorclient.zenith.ZenithEffects.class);
-        return fx!=null&&fx.isActive()&&fx.purpleSky.get()?fx.cloudTint(color):color;
+        return fx!=null&&fx.tintsSky()?fx.cloudTint(color):color;
     }
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void onRenderClouds(int color, CloudStatus cloudStatus, float bottomY, int range, Vec3 cameraPosition, long gameTime, float partialTicks, CallbackInfo ci) {

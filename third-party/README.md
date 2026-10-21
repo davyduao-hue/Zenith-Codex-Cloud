@@ -11,13 +11,17 @@ headers are retained. The corresponding buildable source is shipped with the cli
 | Cubiomes Java bindings | [xpple/cubiomes](https://github.com/xpple/cubiomes/tree/bc70a69e7eee93a239f8d1c211548f95f5c0c8bd), `bc70a69e7eee93a239f8d1c211548f95f5c0c8bd` | [LGPL-3.0](cubiomes/LICENSE) |
 | Cubiomes native library | [xpple/cubiomes](https://github.com/xpple/cubiomes/tree/b12a5325c8a195fa99711ed2052a4fc9cac077a8), `b12a5325c8a195fa99711ed2052a4fc9cac077a8` | [MIT](cubiomes/LICENSE_cubiomes.txt), [loot_library.h notice](cubiomes/LICENSE_loot_library.h.txt) |
 
-## Changes for Zenith 2.0.4
+## Changes for Zenith 2.0.5
 
 Catppuccin source/resources and its mixins are compiled in. Theme registration is
 centralized in `GuiThemes`, with the original Catppuccin theme and an independent
 `ZenithGuiTheme` subclass. The subclass adds the purple palette and layout choice.
 The renderer updates its current theme rather than caching a single theme forever.
-The Zenith layout retains Catppuccin attribution alongside its own name.
+The Zenith layout retains Catppuccin attribution alongside its own name. Zenith's
+own module rows use sliding pill switches; a header-render extension point adds
+the violet accent animation. Category pages prevent addon windows from overlapping. The settings factory inherits Meteor's default factory
+to retain external addon setting registrations, and item previews use Meteor's
+26.2-safe display stacks before joining a world.
 Both built-in addons receive their own identity in `AddonManager`. External copies
 are not required and should be removed from the mods directory.
 
@@ -28,7 +32,8 @@ inserted directly into both module settings screens instead of a multi-target
 mixin, avoiding eager classloading and remapping failures. Optional Baritone mixins
 are gated on the actual mod; the ore-simulation dependency is nested separately.
 The automatic player identity/addon inventory telemetry and its configuration were
-removed. No collector is compiled or started.
+removed. No collector is compiled or started. Nora's Deepslate ESP has the unique
+`nora-deepslate-esp` ID to avoid replacement by Glazed's separate module.
 
 `LegitMaceKill` is omitted: upstream identifies its implementation as copied from
 Trouser-Streak, whose source did not provide a verified redistribution license.
@@ -36,7 +41,8 @@ This omission does not remove Nora's distinct `MaceCombo` module.
 
 **Glazed is not bundled.** The [published license](https://github.com/realnnpg/glazed/blob/6b6cab2a26f7a11985e6129ab51b4e909a2e9460/LICENSE)
 expressly prohibits redistribution, modified distribution and incorporation into
-software intended for distribution. No Glazed source or assets are included.
+software intended for distribution. No Glazed source or assets are included. Compatibility is tested with the separately
+installed official `glazed-26.2-n-17.2.jar`; it is never copied into published bundles.
 
 ## Cubiomes source and replacement
 

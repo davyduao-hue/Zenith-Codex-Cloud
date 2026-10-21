@@ -28,7 +28,7 @@ public abstract class ZenithAim extends Module {
     public static final class AimAssist extends ZenithAim { public AimAssist() { super(false); } }
 
     private ZenithAim(boolean instant) {
-        super(Categories.Combat, instant ? "aimbot" : "aim-assist", instant
+        super(Categories.Combat, instant ? "aimbot" : "zenith-aim-assist", instant
             ? "Faces a visible player inside the targeting cone. Does not attack."
             : "Smoothly guides the camera towards a visible player while attacking.");
         this.instant = instant;
