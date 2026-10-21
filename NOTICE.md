@@ -27,3 +27,9 @@ The dependency JARs retain their own notices and licenses. This repository does
 not contain Minecraft game assets, the reference videos, external texture packs,
 or third-party shader packs. Gradle downloads Minecraft dependencies from the
 official distribution services for building and development.
+
+Update 2.0.4 integrates Catppuccin Addon (GPL-3.0) and permitted Nora Tweaks source
+(CC0-1.0, with inherited GPL code). Source revisions, changes, exclusions and
+Cubiomes LGPL/MIT dependency notices and source archives are provided in
+third-party/README.md. Glazed and Nora's unlicensed borrowed LegitMaceKill module
+are not included. Catppuccin and Nora retain their own source/addon identities.

@@ -113,6 +113,20 @@ public abstract class MeteorRenderPipelines {
         .build()
     );
 
+    public static final RenderPipeline ZENITH_ATMOSPHERE = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
+        .withLocation(MeteorClient.identifier("pipeline/zenith_atmosphere"))
+        .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+        .withVertexShader(MeteorClient.identifier("shaders/zenith_atmosphere.vert"))
+        .withFragmentShader(MeteorClient.identifier("shaders/zenith_atmosphere.frag"))
+        .withBindGroupLayout(BindGroupLayout.builder()
+            .withUniform("Projection", UniformType.UNIFORM_BUFFER)
+            .withUniform("Atmosphere", UniformType.UNIFORM_BUFFER).build())
+        .withDepthStencilState(new DepthStencilState(DepthStencilState.DEFAULT.depthTest(), false))
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+        .withCull(false)
+        .build()
+    );
+
     public static final RenderPipeline UI_COLORED = add(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
         .withLocation(MeteorClient.identifier("pipeline/ui_colored"))
         .withVertexBinding(0, MeteorVertexFormats.POS2_COLOR).withPrimitiveTopology(PrimitiveTopology.TRIANGLES)

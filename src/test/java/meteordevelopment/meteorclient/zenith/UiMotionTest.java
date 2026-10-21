@@ -14,14 +14,52 @@ class UiMotionTest {
         for(int i=0;i<40;i++){double next=UiMotion.approach(value,0,15,1.0/60);assertTrue(next>=0&&next<=value);value=next;}
         assertTrue(value<.001);assertEquals(.4,UiMotion.approach(.4,1,15,-1));
     }
-    @Test void lookingSouthPlacesSouthAheadAndEastOnTheLeft() {
-        assertArrayEquals(new double[]{0,-10},UiMotion.radar(0,10,0),1e-9);
-        assertArrayEquals(new double[]{-10,0},UiMotion.radar(10,0,0),1e-9);
+    @Test void cameraWrapUsesSmallestTurnRatherThanSpinningDot() {
+        assertEquals(2,UiMotion.angleDelta(179,-179),1e-9);
+        assertEquals(-2,UiMotion.angleDelta(-179,179),1e-9);
+        assertEquals(4,UiMotion.angleDelta(719,3),1e-9);
     }
-    @Test void turningWestKeepsForwardTargetsCentered() {
-        assertArrayEquals(new double[]{0,-10},UiMotion.radar(-10,0,90),1e-9);
-        assertArrayEquals(new double[]{10,0},UiMotion.radar(0,-10,90),1e-9);
-        assertArrayEquals(UiMotion.radar(7,3,25),UiMotion.radar(7,3,385),1e-9);
+    @Test void lookingDeflectsDotAndStillnessRecentersIt() {
+        var motion=new UiMotion.LookMotion();
+        motion.update(0,0,1.0/60,1);
+        for(int i=1;i<=10;i++)motion.update(i*3,i,1.0/60,1);
+        assertTrue(motion.x()>.25);assertTrue(motion.y()>.08);
+        for(int i=0;i<60;i++)motion.update(30,10,1.0/60,1);
+        assertEquals(0,motion.x(),1e-6);assertEquals(0,motion.y(),1e-6);
+    }
+    @Test void directionDotRemainsInsideCircleDuringFastDiagonalTurns() {
+        var motion=new UiMotion.LookMotion();
+        motion.update(0,0,1.0/120,4);
+        for(int i=1;i<=50;i++) {
+            motion.update(i*50,i%2==0?90:-90,1.0/120,4);
+            assertTrue(Math.hypot(motion.x(),motion.y())<=1.000001);
+        }
+        motion.update(0,0,2,4);
+        assertEquals(0,motion.x());assertEquals(0,motion.y());
+    }
+    @Test void pressAndReleaseBetweenFramesStillShowsFillAndRing() {
+        var motion=new UiMotion.PressAnimation();
+        motion.update(false,true,1.0/60);
+        assertTrue(motion.amount()>.3);assertEquals(0,motion.rippleProgress(0));
+        motion.update(false,false,1.0/60);
+        assertTrue(motion.amount()>.6);assertTrue(motion.rippleProgress(0)>0);
+        for(int i=0;i<90;i++)motion.update(false,false,1.0/60);
+        assertTrue(motion.amount()<1e-6);assertEquals(1,motion.rippleProgress(0));
+    }
+    @Test void heldKeysDoNotContinuouslyRetriggerPressRings() {
+        var motion=new UiMotion.PressAnimation();
+        for(int i=0;i<90;i++)motion.update(true,false,1.0/60);
+        assertEquals(1,motion.amount(),1e-6);
+        for(int i=0;i<UiMotion.PressAnimation.RIPPLE_COUNT;i++)assertEquals(1,motion.rippleProgress(i));
+        motion.update(false,false,1.0/60);
+        motion.update(true,false,1.0/60);
+        assertEquals(0,motion.rippleProgress(1));
+    }
+    @Test void repeatedClicksKeepBoundedIndependentRingLifetimes() {
+        var motion=new UiMotion.PressAnimation();
+        for(int i=0;i<100;i++)motion.update(false,true,.025);
+        for(int i=0;i<UiMotion.PressAnimation.RIPPLE_COUNT;i++)
+            assertTrue(motion.rippleProgress(i)>=0&&motion.rippleProgress(i)<.25);
     }
     @Test void radarAndKeysFollowHotbarAtCommonResolutions() {
         int[][] screens={{854,480,2},{1280,720,2},{1920,1080,3},{2560,1440,4},{3840,2160,4}};

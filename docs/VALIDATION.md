@@ -1,70 +1,61 @@
-# Validation — 2026-10-20
+# Validation — 2026-10-21
 
-Update: 2.0.3. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK 25.0.4.1,
-Gradle 9.6.1 and Fabric Loom 1.17.21.
+Update **2.0.4**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
+25.0.4.1, Gradle 9.6.1 and Fabric Loom 1.17.21.
 
 | Check | Result |
 | --- | --- |
-| Client build | `bash scripts/setup-cloud.sh` / `./gradlew build` passed |
-| Frame history, animation, radar/docking, sky noise and quality budgets | 18 tests, 0 failures, 0 errors, 0 skipped |
-| Graphical integration | 73 successful checks with the separate example addon loaded; `build/smoke/result.json` |
-| Startup and mixins | Minecraft launched; development mixin audit completed |
-| Menu, module UI, HUD editor | Rendered screenshots captured from Minecraft |
-| Custom dashboard controls | Clicked enum, boolean and slider controls; searched and toggled a module; animated close completed |
-| Meteor GUI mode | Native ModulesScreen, upstream scale/accent/background, theme selector, saved selection and return to Zenith verified |
-| External addon build | Separate Fabric project compiled against the built client API; metadata uses the standard meteor entrypoint |
-| External addon runtime | Category/module attributed to the addon; native settings editor and live private Orbit tick handler verified |
-| Local world | Integrated flat world created and joined |
-| Auto Totem | Supplied totem equipped in Strict mode |
-| Potion HUD | Server potion state received and rendered |
-| Memory/performance HUD | Real heap and frame samples recorded |
-| Hit effects | Target health loss produced a hit burst |
-| Crystals | Crystal corona geometry rendered |
-| Pearls | Thrown pearl produced trail samples |
-| Explosions/deaths | Server events produced their respective effect bursts |
-| Expanded particles | Motion streaks, crossed hit arcs, crystal orbitals, blast filaments, death spirals and pearl arrival pulses rendered |
-| Procedural sky | Nebula, Aurora and Cloudscape captured in Minecraft; native sky-pass shader compiled |
-| Sky quality | All three mesh sizes and star limits checked; shooting stars submitted; toggle/cleanup verified |
-| Terrain occlusion | Obsidian test column remains opaque in front of the procedural sky |
-| Local weather | Cinematic rain rendered streaks/ripples; toggling it off restored prior rain/thunder levels |
-| Explosion replacement | Native explosion clouds were intercepted while the golden effect rendered |
-| Zenith Addons | Custom Kill Aura attacked a local zombie; Crystal Aura paused newly spawned crystals in menus and resumed to break one; both aura pairs excluded their duplicate engines |
-| Radar and keys | Player face marker rendered; W/RMB press fills, purple pearl ribbon and in-tile CPS captured |
-| Performance limits | Low/Balanced/High ceilings are 256/768/1,536 sparks; live downgrades trim active storage |
-| JAR packaging | Metadata, entrypoints, mixins, 13 nested libraries, license, Java target and exclusion of the smoke addon verified |
+| Client build | `./gradlew build` passed |
+| Unit tests | 22 tests, zero failures/errors/skips: frame history, frame-rate-independent key fades, short taps, bounded click ripples, camera-angle wrapping/recentering, HUD docking, sky noise and quality budgets |
+| Graphical integration | 107 successful checks with the separate example addon; `build/smoke/result.json` reports `passed: true` |
+| Mixin/shader initialization | No mixin audit/application errors or shader compilation failures in the final run |
+| Main menu | Zenith is recognized as a TitleScreen; native GUI eligibility, return from theme settings and actual world disconnect retain the custom menu |
+| Three themes | Zenith 2.0 native categories, optional Dashboard, upstream Catppuccin and stock Meteor all rendered; selection persisted and legacy Zenith name migrated |
+| Built-in Nora | 14 modules registered in this Meteor revision (Attribute Swap already exists in the base); all five commands registered; module settings retained Nora identity |
+| Nora custom categories | Actual category buttons opened the editor from both native Meteor and Catppuccin settings screens |
+| Cubiomes | Nested native dependency loaded on Linux; Windows DLL and macOS dylib are also present in the upstream dependency |
+| Separate addon | External Fabric example registered its category/module, edited native settings and received real private Orbit tick events |
+| Look Direction | Dot moved with yaw/pitch, stayed inside its circle, then returned to center without tracking other players |
+| Key animation | W, jump, LMB and RMB press/release pairs between rendered frames illuminated their tiles and started independent ripples; release fades/ripples expired |
+| HUD/world | Integrated flat world joined; eight editable widgets rendered; totem equipped; potion state and measured heap/frame history populated |
+| Combat visuals | Confirmed hit, explosion and death events produced effects; crystals rendered; pearls accumulated trails and arrival pulses; native explosion clouds were replaced |
+| Reference skies | Red dusk and silver storm captured; reference presets applied on selection and preserved manually edited values through save/load |
+| Sky occlusion/cleanup | Opaque obsidian occluded the sky; Low/Balanced/High mesh and star ceilings verified; toggling off stopped rendering; disable/re-enable recreated sky resources |
+| Silver rain | Cinematic rain replaced blue rain columns, drew white streaks/surface rings and restored previous local weather when disabled |
+| Zenith combat modules | Local Kill Aura attack, Crystal Aura break, duplicate-engine exclusion and menu pause/resume passed |
+| Packaging | Metadata, entrypoints, all listed mixins, Java bytecode target, addon/effect classes, shader resources, licenses and 14 nested JARs verified; smoke/example addon code excluded |
 
-The graphical checks use Xvfb and Mesa llvmpipe (software OpenGL). They validate
-startup and rendering, not a hardware FPS comparison. Windows Command Prompt,
-online multiplayer combat, and optional Sodium/Lithium combinations were not
-executed here. These checks do not establish every inherited Meteor module's
-behavior on every server.
+The graphical run uses Xvfb and Mesa llvmpipe software OpenGL. It establishes
+startup and exercised rendering/input behavior, not a hardware FPS improvement or
+pixel-identical reproduction of the recordings. Their original texture packs,
+shader lighting, scene geometry and effect assets were not supplied. These are
+new procedural effects based on the visible references.
 
-The recordings and screenshot guided the layout and procedural effects. An exact
-match to their texture packs, shader lighting and original assets has not been
-established.
+Windows Command Prompt, online server combat, optional Baritone and optional
+Sodium/Lithium combinations were not executed. The native Cubiomes test covers
+Linux loading, not every world-generation result or native platform. Module
+registration does not establish every inherited module's behavior on every server.
+Expected unavailable audio/authentication/cape services and the Xvfb cursor warning
+did not block the graphical checks.
 
-![Zenith menu](screenshots/menu.png)
+Glazed is excluded under its redistribution restrictions; Nora's upstream
+`LegitMaceKill` is excluded for unverified borrowed-source licensing. Nora's
+automatic identity/addon telemetry is omitted. See [source provenance](../third-party/README.md).
 
-![Custom purple dashboard](screenshots/modules.png)
+![Zenith floating-star menu](screenshots/menu.png)
 
-![World HUD and hit effects](screenshots/world-hud.png)
+![Zenith 2.0 native rounded purple theme](screenshots/zenith-theme.png)
 
-![Pearl trail and held keys](screenshots/pearl-keys.png)
+![Built-in Catppuccin theme](screenshots/catppuccin-theme.png)
 
-![Golden explosion effect](screenshots/explosion.png)
+![Nora module settings and integrated category action](screenshots/nora-settings.png)
 
-![Custom dashboard over the world HUD](screenshots/world-gui.png)
+![Red reference dusk](screenshots/reference-dusk.png)
 
-![Purple nebula sky](screenshots/sky-nebula.png)
+![Silver reference storm and rain](screenshots/reference-storm.png)
 
-![Teal aurora sky](screenshots/sky-aurora.png)
+![Golden crystal-style explosion](screenshots/explosion.png)
 
-![Ember cloudscape](screenshots/sky-dusk.png)
+![Short-tap white key fills and expanding rings](screenshots/key-tap-rings.png)
 
-![Cinematic silver rain](screenshots/cinematic-rain.png)
-
-![Interface style selector](screenshots/interface-style.png)
-
-![Original Meteor category GUI](screenshots/meteor-gui.png)
-
-![External addon settings in Meteor mode](screenshots/addon-settings.png)
+![Camera movement direction display](screenshots/look-direction.png)

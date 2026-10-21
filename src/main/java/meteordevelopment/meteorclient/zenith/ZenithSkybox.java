@@ -11,9 +11,9 @@ import meteordevelopment.meteorclient.utils.render.color.Color;
 import java.util.Random;
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
-/** Camera-centered, far-depth sky geometry. Noise is sampled on a cached dome, never per pixel. */
+/** Camera-centered far-depth sky: bounded fragment cloud detail with optional celestial geometry. */
 public final class ZenithSkybox {
-    public enum Style { Nebula, Aurora, Cloudscape }
+    public enum Style { ReferenceDusk, ReferenceStorm, Nebula, Aurora, Cloudscape }
     private final Renderer3D renderer=new Renderer3D(MeteorRenderPipelines.WORLD_COLORED_LINES_DEPTH,MeteorRenderPipelines.ZENITH_SKY);
     private static final double RADIUS=160;
     private static final double[][] STARS=new double[768][5];
@@ -34,9 +34,13 @@ public final class ZenithSkybox {
     private final double[] pointA=new double[3],pointB=new double[3],pointC=new double[3],pointD=new double[3];
     private double cx,cy,cz;
     private int frames,meteorFrames,vertices,starCount;
+    private SkyUniforms uniforms;
     public record Statistics(int frames,int vertices,int stars,int meteorFrames) {}
     public Statistics statistics(){return new Statistics(frames,vertices,starCount,meteorFrames);}
-    public void clear(){frames=meteorFrames=vertices=starCount=0;lastTime=-100;}
+    public void clear(){
+        frames=meteorFrames=vertices=starCount=0;lastTime=-100;
+        if (uniforms != null) { uniforms.close(); uniforms = null; }
+    }
 
     public void render(PoseStack matrices,VisualBudget budget,double time,Style style,int mood,double brightness,double density,boolean stars,boolean aurora,boolean meteors,boolean celestial) {
         boolean was3D=Utils.rendering3D;
@@ -57,7 +61,10 @@ public final class ZenithSkybox {
         }
         // Slow cloud drift needs only five color updates per second; ribbons/stars animate every frame.
         if(Math.abs(time-lastTime)>.2||mood!=lastMood||style.ordinal()!=lastStyle||density!=lastDensity||brightness!=lastBrightness) {
-            for(int i=0;i<directions.length;i++)shade(colors[i],directions[i],time,style,mood,brightness,density);
+            for(int i=0;i<directions.length;i++) {
+                if (style == Style.ReferenceDusk || style == Style.ReferenceStorm) colors[i].set(255,255,255,255);
+                else shade(colors[i],directions[i],time,style,mood,1,density);
+            }
             lastTime=time;lastMood=mood;lastStyle=style.ordinal();lastDensity=density;lastBrightness=brightness;
         }
         Renderer3D r=renderer;r.begin();
@@ -68,7 +75,16 @@ public final class ZenithSkybox {
         for(int row=0;row<rows;row++)for(int col=0;col<columns;col++) {
             int a=row*(columns+1)+col,b=a+1,c=a+columns+2,d=a+columns+1;r.triangles.quad(a,b,c,d);
         }
+        if (uniforms == null) uniforms = new SkyUniforms();
+        r.lines.end();
+        MeshRenderer.begin().attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_ATMOSPHERE)
+            .mesh(r.triangles,matrices).uniform("Projection",RenderSystem.getProjectionMatrixBuffer())
+            .uniform("Atmosphere",uniforms.write(time,style.ordinal(),brightness,density,
+                budget.skyColumns() < 64 ? 3 : budget.skyColumns() < 120 ? 4 : 5)).end();
+        r.begin();
         if(aurora)aurora(r,time,style==Style.Aurora?1.0:.48,budget,mood);
+        // The storm recording has no visible stars; the optional other styles retain the starfield.
+        stars = stars && style != Style.ReferenceStorm;
         starCount=stars?budget.stars():0;
         if(stars)for(int i=0;i<starCount;i++) {
             double[] s=STARS[i];double pulse=.72+.28*Math.sin(time*.8+s[4]);

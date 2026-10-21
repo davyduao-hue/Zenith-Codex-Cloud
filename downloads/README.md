@@ -1,9 +1,9 @@
 # Download Zenith Client 2.0
 
-Current update: **2.0.3 for Minecraft 26.2** — selectable original Meteor GUI or animated purple dashboard,
-Zenith Addons combat modules, corrected radar docking, animated key tiles,
-and denser icy/golden/violet effects with motion trails, crystal orbitals,
-layered blast rings, death spirals and an animated nebula/aurora/cloudscape skybox.
+Current update: **2.0.4 for Minecraft 26.2** — built-in Catppuccin and Nora Tweaks,
+selectable Zenith 2.0 / Catppuccin / Meteor themes, restored title-screen integration,
+camera-direction dot, white key-press rings, red-dusk/silver-storm skies and revised
+reference combat effects. Glazed is excluded because its license forbids distribution.
 
 - [Client JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-MC26.2.jar)
 - [Buildable source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-Source.zip)
@@ -15,6 +15,7 @@ Checksums are in [SHA256SUMS](SHA256SUMS). To reproduce these downloads from
 source, run the build, `python scripts/verify-artifact.py`, then
 `python scripts/package-downloads.py`.
 
-Select **Right Shift → Interface style → Theme: Meteor** for the stock GUI.
-Switch back through **GUI → Theme: Zenith**. A tested buildable addon example
-is included in the source ZIP under `examples/meteor-addon`.
+Select **Right Shift → GUI → Theme** for Zenith 2.0, Catppuccin or Meteor.
+Remove separate Catppuccin and Nora Tweaks JARs. Under **Zenith Effects**, choose
+**Visual preset → Reference Crystal / Reference Sword** to apply the new look.
+A buildable addon example is included under `examples/meteor-addon`.

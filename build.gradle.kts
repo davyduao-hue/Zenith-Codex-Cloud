@@ -30,6 +30,11 @@ repositories {
         url = uri("https://repo.viaversion.com")
     }
     mavenCentral()
+    maven {
+        name = "xpple"
+        url = uri("https://maven.xpple.dev/maven2")
+        content { includeGroup("dev.xpple") }
+    }
 
     exclusiveContent {
         forRepository {
@@ -101,6 +106,10 @@ dependencies {
     jij(libs.minecraft.auth) {
         exclude("com.google.code.gson")
         exclude("com.google.errorprone")
+    }
+    // Nora Tweaks world-generation utilities; preserve the replaceable LGPL library JAR.
+    jij("dev.xpple:cubiomes:0.0.0-2026.6.29.1782739186+b12a5325c8a195fa99711ed2052a4fc9cac077a8") {
+        isTransitive = false
     }
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
@@ -205,6 +214,7 @@ tasks {
             rename { "${it}_$archivesBaseName" }
         }
         from("NOTICE.md")
+        from("third-party") { into("META-INF/third-party"); exclude("**/*-source.zip", "**/*-sources.jar") }
 
         // Include launcher classes
         from(launcher.output)
@@ -252,7 +262,10 @@ tasks {
 
 
 tasks.test { useJUnitPlatform() }
-tasks.named<Jar>("sourcesJar") { from("LICENSE", "NOTICE.md", "README.md") }
+tasks.named<Jar>("sourcesJar") {
+    from("LICENSE", "NOTICE.md", "README.md")
+    from("third-party") { into("third-party") }
+}
 
 // A complete buildable source archive accompanies the GPL distribution.
 val sourceDistribution = tasks.register<Zip>("sourceDistribution") {
@@ -265,6 +278,7 @@ val sourceDistribution = tasks.register<Zip>("sourceDistribution") {
         from("gradle") { into("gradle") }
         from("scripts") { into("scripts") }
         from("docs") { into("docs") }
+        from("third-party") { into("third-party") }
         from("examples") { into("examples"); exclude("**/build/**", "**/.gradle/**") }
         from("build.gradle.kts", "settings.gradle.kts", "gradle.properties", "gradlew", "gradlew.bat",
             "LICENSE", "NOTICE.md", "README.md", ".gitignore", ".editorconfig")

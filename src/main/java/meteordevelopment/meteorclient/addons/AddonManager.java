@@ -63,6 +63,8 @@ public class AddonManager {
         }
 
         meteordevelopment.meteorclient.zenith.addons.ZenithAddons.install();
+        installBuiltin(new me.pindour.catppuccin.CatppuccinAddon(), "Catppuccin Addon", "Pindour", 203, 166, 247);
+        installBuiltin(new me.noramibu.tweaks.NoraTweaks(), "Nora Tweaks", "noramibu", 225, 25, 25);
 
         // Addons
         for (EntrypointContainer<MeteorAddon> entrypoint : FabricLoader.getInstance().getEntrypointContainers("meteor", MeteorAddon.class)) {
@@ -72,6 +74,13 @@ public class AddonManager {
                 addon = entrypoint.getEntrypoint();
             } catch (Throwable throwable) {
                 throw new RuntimeException("Exception during addon init \"%s\".".formatted(metadata.getName()), throwable);
+            }
+
+            // These source integrations already have a single identity, category registration,
+            // and initialization pass. An old external copy must not run their startup twice.
+            if (addon instanceof me.pindour.catppuccin.CatppuccinAddon || addon instanceof me.noramibu.tweaks.NoraTweaks) {
+                MeteorClient.LOG.warn("{} is built into Zenith; remove the separate addon JAR.", metadata.getName());
+                continue;
             }
 
             addon.name = metadata.getName();
@@ -90,5 +99,12 @@ public class AddonManager {
 
             ADDONS.add(addon);
         }
+    }
+
+    private static void installBuiltin(MeteorAddon addon, String name, String author, int red, int green, int blue) {
+        addon.name = name;
+        addon.authors = new String[] { author };
+        addon.color.set(red, green, blue, 255);
+        ADDONS.add(addon);
     }
 }

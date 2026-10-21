@@ -4,7 +4,8 @@ import meteordevelopment.meteorclient.gui.GuiThemes;
 import meteordevelopment.meteorclient.gui.tabs.Tabs;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
@@ -12,9 +13,11 @@ import net.minecraft.network.chat.Component;
 
 import static meteordevelopment.meteorclient.MeteorClient.mc;
 
-public final class ZenithMenuScreen extends Screen {
+public final class ZenithMenuScreen extends TitleScreen {
     private final long opened = System.nanoTime();
-    public ZenithMenuScreen() { super(Component.literal("Zenith Client 2.0")); }
+    public ZenithMenuScreen() { super(); }
+
+    @Override public Component getTitle() { return Component.literal("Zenith Client 2.0"); }
 
     @Override protected void init() {
         int w = 204, x = width/2-w/2, y = (int)(height*.43);
@@ -35,7 +38,11 @@ public final class ZenithMenuScreen extends Screen {
         centered(g,"CLIENT 2.0",width/2,(int)(height*.31)+20,0xffac8bcf,.8f);
         g.text(font,"MINECRAFT 26.2 / FABRIC",12,12,0xff867c99,false);
         centered(g,"Built on Meteor / GPL-3.0",width/2,height-18,0xff796c8c,.65f);
-        super.extractRenderState(g,mx,my,delta);
+        // Render this menu's widgets without invoking TitleScreen's panorama and logo.
+        // Keeping the TitleScreen type makes native title checks and addon hooks recognize Zenith.
+        for (var child : children()) {
+            if (child instanceof Renderable renderable) renderable.extractRenderState(g,mx,my,delta);
+        }
     }
 
     public static void background(GuiGraphicsExtractor g,int width,int height,double time) {

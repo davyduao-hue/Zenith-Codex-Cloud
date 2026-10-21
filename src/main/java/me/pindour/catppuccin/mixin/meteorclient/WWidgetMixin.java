@@ -1,0 +1,122 @@
+package me.pindour.catppuccin.mixin.meteorclient;
+
+import me.pindour.catppuccin.gui.themes.catppuccin.CatppuccinGuiTheme;
+import me.pindour.catppuccin.gui.widgets.IWidgetBackport;
+import meteordevelopment.meteorclient.gui.GuiTheme;
+import meteordevelopment.meteorclient.gui.GuiThemes;
+import meteordevelopment.meteorclient.gui.widgets.WWidget;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
+
+//? if <=1.21.10 {
+/*import meteordevelopment.meteorclient.gui.renderer.GuiRenderer;
+import meteordevelopment.meteorclient.gui.widgets.containers.WView;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+*///? }
+
+@Mixin(value = WWidget.class, remap = false)
+public abstract class WWidgetMixin implements IWidgetBackport {
+
+    @Redirect(method = "calculateSize", at = @At(value = "INVOKE", target = "Lmeteordevelopment/meteorclient/gui/GuiTheme;scale(D)D"))
+    private double catppuccin$scale(GuiTheme theme, double value) {
+        // Fixes https://github.com/MeteorDevelopment/meteor-client/issues/5632
+        // But requires already scaled values
+        if (GuiThemes.get() instanceof CatppuccinGuiTheme) return value;
+        return theme.scale(value);
+    }
+
+    //? if <=1.21.10 {
+
+    /*@Shadow public WWidget parent;
+    @Shadow public String tooltip;
+
+    @Shadow protected double mouseOverTimer;
+    @Shadow public boolean visible;
+
+    @Shadow public abstract boolean isOver(double x, double y);
+    @Shadow protected abstract void onRender(GuiRenderer renderer, double mouseX, double mouseY, double delta);
+
+    @Unique
+    public boolean focused;
+
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+    private void catppuccin$render(GuiRenderer renderer, double mouseX, double mouseY, double delta, CallbackInfoReturnable<Boolean> cir) {
+        if (!visible) {
+            cir.setReturnValue(true);
+            return;
+        }
+
+        if (isOver(mouseX, mouseY)) {
+            mouseOverTimer += delta;
+
+            if ((catppuccin$hasInstantTooltips() || mouseOverTimer >= 1) && tooltip != null) {
+                WView view = catppuccin$getView();
+                if (view == null || view.mouseOver) renderer.tooltip(tooltip);
+            }
+        } else {
+            mouseOverTimer = 0;
+        }
+
+        onRender(renderer, mouseX, mouseY, delta);
+        cir.setReturnValue(false);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @Override
+    public WView catppuccin$getView() {
+        return (Object) this instanceof WView ? (WView) (Object) this : (parent != null ? ((IWidgetBackport) parent).catppuccin$getView() : null);
+    }
+
+    @Override
+    public boolean catppuccin$isFocused() {
+        return focused;
+    }
+
+    @Override
+    public boolean catppuccin$isSelfFocused() {
+        return focused;
+    }
+
+    @Override
+    public void catppuccin$setFocused(boolean focused) {
+        if (this.focused != focused) this.focused = focused;
+    }
+
+    *///? }
+
+    //? if >=1.21.10 {
+    
+    @Shadow
+    protected boolean instantTooltips;
+
+    @Override
+    public boolean catppuccin$hasInstantTooltips() {
+        return instantTooltips;
+    }
+
+    @Override
+    public void catppuccin$setInstantTooltips(boolean instant) {
+        instantTooltips = instant;
+    }
+
+    //? } else {
+
+    /*@Unique
+    public boolean catppuccin$instantTooltips;
+
+    @Override
+    public boolean catppuccin$hasInstantTooltips() {
+        return catppuccin$instantTooltips;
+    }
+
+    @Override
+    public void catppuccin$setInstantTooltips(boolean instant) {
+        this.catppuccin$instantTooltips = instant;
+    }
+
+    *///? }
+}

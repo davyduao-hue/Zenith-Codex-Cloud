@@ -1,0 +1,80 @@
+package me.pindour.catppuccin.renderer.rounded.modern;
+
+//? if >=1.21.5 {
+import com.mojang.blaze3d.pipeline.BlendFunction;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import me.pindour.catppuccin.CatppuccinAddon;
+import meteordevelopment.meteorclient.renderer.ExtendedRenderPipelineBuilder;
+import meteordevelopment.meteorclient.renderer.MeteorRenderPipelines;
+import meteordevelopment.meteorclient.renderer.MeteorVertexFormats;
+import com.mojang.blaze3d.shaders.UniformType;
+
+import java.lang.reflect.Method;
+
+//? if >=26.1 {
+import com.mojang.blaze3d.pipeline.ColorTargetState;
+import java.util.Optional;
+//? } else {
+/*import com.mojang.blaze3d.platform.DepthTestFunction;
+*///? }
+
+//? if >=26.2 {
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.pipeline.BindGroupLayout;
+//? } else {
+/*import com.mojang.blaze3d.vertex.VertexFormat;
+*///?}
+
+public class CatppuccinRenderPipelines {
+
+    private static final RenderPipeline.Snippet MESH_UNIFORMS = RenderPipeline.builder()
+        //? if >=26.2 {
+        .withBindGroupLayout(BindGroupLayout.builder()
+                .withUniform("MeshData", UniformType.UNIFORM_BUFFER)
+                .build())
+        //? } else {
+        /*.withUniform("MeshData", UniformType.UNIFORM_BUFFER)
+        *///? }
+        .buildSnippet();
+
+    public static final RenderPipeline ROUNDED_UI = register(new ExtendedRenderPipelineBuilder(MESH_UNIFORMS)
+        .withLocation(CatppuccinAddon.identifier("pipeline/rounded_ui"))
+        .withVertexShader(CatppuccinAddon.identifier("shaders/rounded_ui.vert"))
+        .withFragmentShader(CatppuccinAddon.identifier("shaders/rounded_ui.frag"))
+
+        //? if >=26.2 {
+        .withVertexBinding(0, MeteorVertexFormats.POS2_COLOR)
+        .withPrimitiveTopology(PrimitiveTopology.TRIANGLES)
+        .withBindGroupLayout(BindGroupLayout.builder()
+                .withUniform("RoundedRectData", UniformType.UNIFORM_BUFFER)
+                .build())
+        //? } else {
+        /*.withVertexFormat(MeteorVertexFormats.POS2_COLOR, VertexFormat.Mode.TRIANGLES)
+        .withUniform("RoundedRectData", UniformType.UNIFORM_BUFFER)
+        *///? }
+
+        //? if >=26.1 {
+        .withDepthStencilState(Optional.empty())
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+
+        //? } else {
+        /*.withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+        .withDepthWrite(false)
+        .withBlend(BlendFunction.TRANSLUCENT)
+        *///? }
+
+        .withCull(false)
+        .build()
+    );
+
+    private static RenderPipeline register(RenderPipeline pipeline) {
+        try {
+            Method method = MeteorRenderPipelines.class.getDeclaredMethod("add", RenderPipeline.class);
+            method.setAccessible(true);
+            return (RenderPipeline) method.invoke(null, pipeline);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to register pipeline", e);
+        }
+    }
+}
+//?}

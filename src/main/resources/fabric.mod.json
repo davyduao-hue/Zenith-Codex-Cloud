@@ -32,7 +32,9 @@
     "meteor-client-sodium.mixins.json",
     "meteor-client-lithium.mixins.json",
     "meteor-client-viafabricplus.mixins.json",
-    "zenith.mixins.json"
+    "zenith.mixins.json",
+    "catppuccin.mixins.json",
+    "nora-tweaks.mixins.json"
   ],
   "accessWidener": "meteor-client.classtweaker",
   "custom": {

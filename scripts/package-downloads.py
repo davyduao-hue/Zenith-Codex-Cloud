@@ -19,19 +19,24 @@ instructions = f'''Zenith Client 2.0 - update {version}
 Install: Minecraft 26.2, Fabric Loader 0.19.3 or newer, Java 25.
 Put Zenith-Client-2.0-MC26.2.jar in your Fabric profile's mods folder.
 Replace your previous Zenith or Meteor JAR; keep only one installed.
-Right Shift > Interface style > Theme: Meteor opens the original Meteor GUI.
-GUI tab > Theme: Zenith restores the custom animated dashboard.
-Zenith Addons contains
-the custom combat modules; Render > Zenith Effects controls the visuals.
-HUD editor in the sidebar edits radar, key tiles and graphs.
-Render > Zenith Effects > Skybox selects Nebula/Aurora/Cloudscape and
-controls auroras, stars, shooting stars, cloud density and brightness.
+Remove separate Catppuccin and Nora Tweaks addon JARs: their permitted source
+is now built in. Glazed is not included because its license forbids redistribution.
+Right Shift > GUI > Theme chooses Zenith 2.0, Catppuccin, or Meteor.
+Zenith 2.0 uses rounded purple category windows; Layout > Dashboard restores
+the previous full dashboard. HUD > Edit opens the widget editor.
+Render > Zenith Effects > Visual preset selects Reference Crystal (red dusk),
+Reference Sword (silver storm), or Zenith Purple. Select a preset after upgrading
+to apply the new defaults to an existing settings profile.
+The former radar is now Look Direction, a mint camera-motion dot with L/R counters.
+Keys show press/release fills and expanding white rings, including short clicks.
 Effect density and Quality control particle emission and performance.
+Zenith Addons contains the custom combat modules; Nora Tweaks has its own category.
 
 Build: extract Zenith-Client-2.0-Source.zip, open Command Prompt inside
 Zenith-Client-2.0, and run gradlew.bat build with JDK 25 on PATH.
 Find the installable JAR under build\\libs. Internet is needed for the first build.
-The source archive includes README.md, GPL-3.0 LICENSE and NOTICE.md.
+The source archive includes README.md, GPL-3.0 LICENSE, NOTICE.md and third-party
+licenses/provenance/dependency sources.
 To build your own addon: open examples\\meteor-addon inside the source, then
 run gradlew.bat build. Its README explains the entrypoint, settings and modules.
 The example builds a separate JAR to put alongside Zenith; addons must target

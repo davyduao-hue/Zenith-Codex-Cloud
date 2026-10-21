@@ -131,6 +131,9 @@ public class ModuleScreen extends WindowScreen {
         WButton paste = sharing.add(theme.button(GuiRenderer.PASTE)).widget();
         paste.action = this::fromClipboard;
         paste.tooltip = "Paste config";
+
+        WButton category = add(theme.button("Add to Custom Category")).expandX().widget();
+        category.action = () -> MeteorClient.mc.gui.setScreen(new me.noramibu.tweaks.gui.screens.AddToCategoryScreen(theme, module));
     }
 
     @Override

@@ -32,58 +32,62 @@ import java.util.*;
 /** Local cosmetic geometry, with explicit storage, distance, and tessellation budgets. */
 public final class ZenithEffects extends Module {
     public enum Quality { Low, Balanced, High }
+    public enum VisualPreset { ReferenceCrystal, ReferenceSword, ZenithPurple, Custom }
     public enum Palette { VideoReference, ZenithPurple }
     public enum SkyMood { EmberDusk, RainySilver, Purple, Aurora }
     private final SettingGroup general = settings.getDefaultGroup();
     private final SettingGroup visuals = settings.createGroup("Effects");
     private final SettingGroup skySettings=settings.createGroup("Skybox");
+    public final Setting<VisualPreset> visualPreset = general.add(new EnumSetting.Builder<VisualPreset>().name("visual-preset")
+        .description("Apply the crystal video, silver sword video, or purple Zenith look. Individual controls stay editable.")
+        .defaultValue(VisualPreset.ReferenceCrystal).onChanged(this::applyPreset).build());
     public final Setting<Quality> quality = general.add(new EnumSetting.Builder<Quality>().name("quality")
         .description("Controls ring segments, particle count and active-effect budgets.").defaultValue(Quality.Balanced).build());
     public final Setting<SettingColor> accent = general.add(new ColorSetting.Builder().name("accent")
         .description("Color of rings, crystal coronas, pearl trails, and death effects.")
         .defaultValue(new SettingColor(183, 117, 255)).build());
     private final Setting<Palette> palette=general.add(new EnumSetting.Builder<Palette>().name("effect-palette")
-        .description("Video Reference uses icy sword impacts, golden crystal explosions, and violet pearl trails.").defaultValue(Palette.VideoReference).build());
+        .description("Video Reference uses pale-gold sword flashes, golden crystal explosions, and white-violet pearl trails.").defaultValue(Palette.VideoReference).build());
     private final Setting<SkyMood> skyMood=general.add(new EnumSetting.Builder<SkyMood>().name("sky-mood")
-        .description("Warm dusk, storm silver, deep purple or teal aurora atmosphere.").defaultValue(SkyMood.Purple).build());
+        .description("Warm dusk, storm silver, deep purple or teal aurora atmosphere.").defaultValue(SkyMood.EmberDusk).build());
     private final Setting<Double> intensity=general.add(new DoubleSetting.Builder().name("effect-density")
         .description("Particle emission multiplier; quality caps still apply.").defaultValue(1.5).range(.25,3).sliderRange(.25,3).build());
     private final Setting<Double> effectSize=general.add(new DoubleSetting.Builder().name("effect-size")
         .description("Scale of shockwaves, slashes, coronas and death spirals.").defaultValue(1.15).range(.5,2).sliderRange(.5,2).build());
     public final Setting<Boolean> animatedSky=skySettings.add(new BoolSetting.Builder().name("animated-skybox")
-        .description("Far-depth procedural sky with nebula clouds, auroras and celestial light.").defaultValue(true).build());
+        .description("Red dusk, silver storm, or purple procedural sky rendered behind terrain.").defaultValue(true).build());
     public final Setting<Boolean> replaceClouds=skySettings.add(new BoolSetting.Builder().name("replace-vanilla-clouds")
-        .description("Use the smooth procedural cloud dome instead of block-shaped clouds.").defaultValue(true).build());
+        .description("Hide block clouds. Keep this off for the cloud silhouettes in the reference recordings.").defaultValue(false).build());
     private final Setting<ZenithSkybox.Style> skyStyle=skySettings.add(new EnumSetting.Builder<ZenithSkybox.Style>().name("sky-style")
-        .description("Nebula dust, brighter aurora curtains, or layered cinematic clouds.").defaultValue(ZenithSkybox.Style.Nebula).build());
+        .description("Reference Dusk matches the red horizon; Reference Storm gives the silver overcast sword scene.").defaultValue(ZenithSkybox.Style.ReferenceDusk).build());
     private final Setting<Double> skyBrightness=skySettings.add(new DoubleSetting.Builder().name("sky-brightness")
         .description("Brightness of the procedural sky, independent of world lighting.").defaultValue(1.0).range(.25,1.5).sliderRange(.25,1.5).build());
     private final Setting<Double> cloudDensity=skySettings.add(new DoubleSetting.Builder().name("cloud-density")
         .description("Strength of the layered cloud and nebula field.").defaultValue(1.2).range(0,2).sliderRange(0,2).build());
     private final Setting<Double> skySpeed=skySettings.add(new DoubleSetting.Builder().name("sky-speed")
         .description("Speed of drifting clouds, aurora curtains and shooting stars.").defaultValue(.8).range(.1,2).sliderRange(.1,2).build());
-    private final Setting<Boolean> auroras=skySettings.add(new BoolSetting.Builder().name("aurora-ribbons").description("Animated translucent light curtains across the sky.").defaultValue(true).build());
-    private final Setting<Boolean> meteors=skySettings.add(new BoolSetting.Builder().name("shooting-stars").description("Fading meteor heads and tails across the sky.").defaultValue(true).build());
-    private final Setting<Boolean> celestial=skySettings.add(new BoolSetting.Builder().name("celestial-halo").description("A soft celestial orb with an inclined luminous ring.").defaultValue(true).build());
+    private final Setting<Boolean> auroras=skySettings.add(new BoolSetting.Builder().name("aurora-ribbons").description("Animated translucent light curtains across the sky.").defaultValue(false).build());
+    private final Setting<Boolean> meteors=skySettings.add(new BoolSetting.Builder().name("shooting-stars").description("Fading meteor heads and tails across the sky.").defaultValue(false).build());
+    private final Setting<Boolean> celestial=skySettings.add(new BoolSetting.Builder().name("celestial-halo").description("A soft celestial orb with an inclined luminous ring.").defaultValue(false).build());
     private final Setting<Double> flashStrength=general.add(new DoubleSetting.Builder().name("explosion-glow")
         .description("Brightness of the explosion's soft white-gold core. Zero removes the flash.").defaultValue(.7).range(0,1).sliderRange(0,1).build());
     public final Setting<Boolean> purpleSky = bool("purple-sky", "Override sky color using the selected sky mood.", true);
-    public final Setting<Boolean> starfield = bool("starfield", "Dense seeded stars with soft flares and animated twinkle.", true);
+    public final Setting<Boolean> starfield = bool("starfield", "Optional seeded stars; reference presets leave them off.", false);
     public final Setting<Boolean> rain = bool("cinematic-rain", "Local rain; does not change server weather.", false);
     private final Setting<Boolean> hits = bool("hit-effects", "Damage-confirmed shock rings and star sparks.", true);
-    private final Setting<Boolean> crystals = bool("crystal-visuals", "Orbiting crystal coronas and rotating wire diamonds.", true);
+    private final Setting<Boolean> crystals = bool("crystal-visuals", "Golden crystal glow, concentric base rings, and optional orbitals.", true);
     private final Setting<Boolean> explosions = bool("explosion-effects", "Layered expanding rings and particle shards for server explosions.", true);
     private final Setting<Boolean> replaceExplosionSmoke = bool("replace-explosion-smoke", "Replace vanilla explosion clouds with the custom golden glow and shards.", true);
     private final Setting<Boolean> pearls = bool("pearl-visuals", "Fading trails and a corona around thrown pearls.", true);
     private final Setting<Boolean> deaths = bool("death-visuals", "Ascending rings, shards and a light column on entity death.", true);
     private final Setting<Boolean> sword = bool("sword-animation", "Adds a smooth sideways slash to first-person sword swings.", true);
-    private final Setting<Boolean> slashes=bool("slash-arcs","Crossed curved sword flares and a ground impact ripple.",true);
-    private final Setting<Boolean> orbitals=bool("crystal-orbitals","Tilted energy rings, a spiraling core and orbiting star flares.",true);
-    private final Setting<Boolean> lightning=bool("blast-lightning","Short branching energy filaments around explosions.",true);
+    private final Setting<Boolean> slashes=bool("slash-arcs","Optional crossed sword arcs around the short reference impact rings.",false);
+    private final Setting<Boolean> orbitals=bool("crystal-orbitals","Optional tilted energy rings and a spiraling core around crystals.",false);
+    private final Setting<Boolean> lightning=bool("blast-lightning","Optional branching filaments around the golden explosion dome.",false);
     private final Setting<Boolean> particleTrails=bool("particle-trails","Soft velocity streaks behind burst particles and pearl ribbons.",true);
     private final Setting<Boolean> deathSpiral=bool("death-spiral","Ascending double helix, expanding rings and a tapered light column.",true);
-    private final Setting<Boolean> ambientMotes=bool("ambient-motes","Sparse floating sparks around the player, with world occlusion.",true);
-    private final Setting<Boolean> rainStreaks=bool("rain-streaks","Extra silver rain streaks and ground ripples when outdoors in rain.",true);
+    private final Setting<Boolean> ambientMotes=bool("ambient-motes","Soft drifting ember lights around the player, with world occlusion.",true);
+    private final Setting<Boolean> rainStreaks=bool("rain-streaks","Silver streaks and ground ripples; replaces blue rain columns when cinematic rain is enabled.",true);
     private final Setting<Integer> range = general.add(new IntSetting.Builder().name("render-distance")
         .description("Effects farther away than this distance are discarded.").defaultValue(48).range(8, 96).sliderRange(8, 96).build());
     private final ArrayList<Burst> bursts = new ArrayList<>();
@@ -94,6 +98,8 @@ public final class ZenithEffects extends Module {
     private final Color tint = new Color(), white = new Color(238, 220, 255), clear = new Color(183,117,255,0);
     private final Color soft=new Color(),ribbonEnd=new Color();
     private int tick;
+    private boolean loadingSettings;
+    private double cameraRightX, cameraRightZ, cameraUpX, cameraUpY, cameraUpZ;
     private boolean forcedRain;
     private float originalRain, originalThunder;
     private Renderer3D glowRenderer;
@@ -102,7 +108,10 @@ public final class ZenithEffects extends Module {
     private final double[][] rainGround=new double[16][3];
     private int rainRippleCount;
     private int hitBursts, explosionBursts, deathBursts, pearlSamples, crystalFrames,replacedClouds;
-    private int lightningFrames,rainFrames,trailImpacts;
+    private int lightningFrames,rainFrames,trailImpacts,nativeRainReplacements;
+    public boolean replacesNativeRain(){return isActive()&&rain.get()&&rainStreaks.get();}
+    public void onNativeRainReplaced(){nativeRainReplacements++;}
+    public int nativeRainReplacements(){return nativeRainReplacements;}
     public record Statistics(int hits,int explosions,int deaths,int pearlSamples,int crystalFrames,int sparks,int replacedClouds,
         int skyFrames,int skyVertices,int skyStars,int meteorFrames,int lightningFrames,int rainFrames,int trailImpacts) {}
     public Statistics statistics() {
@@ -115,27 +124,56 @@ public final class ZenithEffects extends Module {
     public void renderSky(com.mojang.blaze3d.vertex.PoseStack matrices,float partialTick) {
         if(!hasSkybox())return;
         if(skybox==null)skybox=new ZenithSkybox();
-        skybox.render(matrices,budget(),(tick+partialTick)/20.0*skySpeed.get(),skyStyle.get(),skyMood.get().ordinal(),skyBrightness.get(),cloudDensity.get(),starfield.get(),auroras.get(),meteors.get(),celestial.get());
+        skybox.render(matrices,budget(),(tick+partialTick)/20.0*skySpeed.get(),skyStyle.get(),effectiveSkyMood().ordinal(),skyBrightness.get(),cloudDensity.get(),starfield.get(),auroras.get(),meteors.get(),celestial.get());
     }
 
     public ZenithEffects() {
-        super(Categories.Render, "zenith-effects", "Video-inspired icy hits, golden crystal shockwaves, pearl ribbons, sky and death visuals.");
+        super(Categories.Render, "zenith-effects", "Short impact flashes, golden crystal domes, pearl ribbons, reference skies and death visuals.");
     }
-    public int skyColor(){return switch(skyMood.get()){case EmberDusk->0xff8a344a;case RainySilver->0xff9faebb;case Purple->0xff553475;case Aurora->0xff245466;};}
+    /** A preset is applied only by an explicit selector change, never on each frame/tick. */
+    private void applyPreset(VisualPreset preset) {
+        if (loadingSettings || preset == VisualPreset.Custom || skyStyle == null) return;
+        boolean purple = preset == VisualPreset.ZenithPurple;
+        boolean storm = preset == VisualPreset.ReferenceSword;
+        palette.set(purple ? Palette.ZenithPurple : Palette.VideoReference);
+        skyStyle.set(purple ? ZenithSkybox.Style.Nebula : storm ? ZenithSkybox.Style.ReferenceStorm : ZenithSkybox.Style.ReferenceDusk);
+        skyMood.set(purple ? SkyMood.Purple : storm ? SkyMood.RainySilver : SkyMood.EmberDusk);
+        animatedSky.set(true); purpleSky.set(true); replaceClouds.set(purple);
+        rain.set(storm); starfield.set(purple); auroras.set(purple); meteors.set(purple); celestial.set(false);
+        slashes.set(purple); orbitals.set(purple); lightning.set(purple);
+        ambientMotes.set(!storm); intensity.set(storm ? 1.15 : 1.5); effectSize.set(1.15);
+        flashStrength.set(storm ? .55 : .7); cloudDensity.set(storm ? 1.45 : 1.2); skyBrightness.set(1.0);
+    }
+
+    @Override public Module fromTag(net.minecraft.nbt.CompoundTag tag) {
+        // Loading saved sliders must not trigger a preset and overwrite later/earlier groups.
+        loadingSettings = true;
+        try { return super.fromTag(tag); }
+        finally { loadingSettings = false; }
+    }
+
+    private SkyMood effectiveSkyMood() {
+        return switch (skyStyle.get()) {
+            case ReferenceDusk -> SkyMood.EmberDusk;
+            case ReferenceStorm -> SkyMood.RainySilver;
+            default -> skyMood.get();
+        };
+    }
+    public int skyColor(){return switch(effectiveSkyMood()){case EmberDusk->0xff9a2815;case RainySilver->0xff9ba1ae;case Purple->0xff553475;case Aurora->0xff245466;};}
     public org.joml.Vector4f fogTint(org.joml.Vector4f original) {
-        int rgb=skyColor();float amount=skyMood.get()==SkyMood.EmberDusk?.3f:.18f;
+        int rgb=skyColor();float amount=effectiveSkyMood()==SkyMood.EmberDusk?.32f:effectiveSkyMood()==SkyMood.RainySilver?.38f:.18f;
         return new org.joml.Vector4f(original.x*(1-amount)+(rgb>>16&255)/255f*amount,
             original.y*(1-amount)+(rgb>>8&255)/255f*amount,original.z*(1-amount)+(rgb&255)/255f*amount,original.w);
     }
     public int cloudTint(int original) {
-        int rgb=skyColor();double a=.45;
+        int rgb=effectiveSkyMood()==SkyMood.EmberDusk?0xff714846:skyColor();double a=.58;
         int r=(int)((original>>16&255)*(1-a)+(rgb>>16&255)*a);
         int g=(int)((original>>8&255)*(1-a)+(rgb>>8&255)*a),b=(int)((original&255)*(1-a)+(rgb&255)*a);
         return (original&0xff000000)|r<<16|g<<8|b;
     }
     private void colorFor(int kind,int alpha) {
         if(palette.get()==Palette.ZenithPurple)tint.set(accent.get());
-        else switch(kind){case 0->tint.set(169,220,255,255);case 1->tint.set(255,151,48,255);case 2->tint.set(204,223,255,255);default->tint.set(196,135,255,255);}
+        else switch(kind){case 0->tint.set(255,226,207,255);case 1->tint.set(255,151,48,255);case 2->tint.set(204,223,255,255);default->tint.set(196,135,255,255);}
         tint.a=Math.max(0,Math.min(255,alpha));
     }
 
@@ -148,6 +186,7 @@ public final class ZenithEffects extends Module {
     }
 
     @EventHandler private void onParticle(ParticleEvent event) {
+        if (replacesNativeRain() && event.particle.getType()==ParticleTypes.RAIN) event.cancel();
         if(explosions.get()&&replaceExplosionSmoke.get()&&(event.particle.getType()==ParticleTypes.EXPLOSION||event.particle.getType()==ParticleTypes.EXPLOSION_EMITTER)){event.cancel();replacedClouds++;}
     }
     public boolean replaceExplosionAt(Vec3 center) {
@@ -250,8 +289,8 @@ public final class ZenithEffects extends Module {
 
     @Override public void onDeactivate() { restoreRain(); clear(); }
     @EventHandler private void onLeave(GameLeftEvent event) { clear(); forcedRain = false; }
-    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=0;if(skybox!=null)skybox.clear(); }
-    private static int lifetime(int type){return type==2?54:type==1?36:26;}
+    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;if(skybox!=null)skybox.clear(); }
+    private static int lifetime(int type){return type==2?44:type==1?26:type==0?10:18;}
 
     @EventHandler private void onHand(HeldItemRendererEvent event) {
         if (!sword.get() || mc.player == null) return;
@@ -267,6 +306,9 @@ public final class ZenithEffects extends Module {
     @EventHandler private void onRender(Render3DEvent event) {
         if (mc.player == null || mc.level == null) return;
         double time=(tick+event.tickDelta)/20.0;
+        double yaw=Math.toRadians(mc.gameRenderer.mainCamera().yRot()),pitch=Math.toRadians(mc.gameRenderer.mainCamera().xRot());
+        cameraRightX=Math.cos(yaw);cameraRightZ=Math.sin(yaw);
+        cameraUpX=-Math.sin(yaw)*Math.sin(pitch);cameraUpY=Math.cos(pitch);cameraUpZ=Math.cos(yaw)*Math.sin(pitch);
         VisualBudget budget=budget();
         if(glowRenderer==null)glowRenderer=new Renderer3D(MeteorRenderPipelines.WORLD_COLORED_LINES_DEPTH,MeteorRenderPipelines.ZENITH_GLOW);
         Renderer3D r=glowRenderer;r.begin();
@@ -277,19 +319,19 @@ public final class ZenithEffects extends Module {
             double x=previous.x+(position.x-previous.x)*event.tickDelta,y=previous.y+(position.y-previous.y)*event.tickDelta,z=previous.z+(position.z-previous.z)*event.tickDelta;
             if(entity instanceof EndCrystal&&crystals.get())renderCrystal(r,x,y,z,time,entity.getId(),budget.segments());
             else if(entity instanceof ThrownEnderpearl&&pearls.get()) {
-                colorFor(4,210);ring(r,x,y,z,.2,.022,tint,24,true);halo(r,x,y,z,.38,70,4,24,false);
-                colorFor(4,150);orbital(r,x,y,z,.32,.012,.9,time*3,0,Math.TAU,tint,24);
+                colorFor(4,210);ring(r,x,y,z,.16,.012,tint,24,true);halo(r,x,y,z,.36,85,4,16,false);
+                halo(r,x,y,z,.09,220,4,12,false);
             }
         }
         if(pearls.get())for(var entry:trails.entrySet()) {
             ArrayDeque<Vec3> trail=entry.getValue();Vec3 previous=null;int i=0;
             double fade=SkyPattern.fade(tick-trailSeen.getOrDefault(entry.getKey(),tick)+event.tickDelta,18);
-            double yaw=Math.toRadians(mc.player.getYRot());
             for(Vec3 point:trail) {
                 double t=++i/(double)trail.size();colorFor(4,(int)(205*t*fade));
                 if(previous!=null) {
                     soft.set(tint);soft.a/=4;ribbon(r,previous.x,previous.y,previous.z,point.x,point.y,point.z,.085*t,soft,false);
-                    ribbon(r,previous.x,previous.y,previous.z,point.x,point.y,point.z,.022*t,tint,false);
+                    white.set(255,246,255,(int)(225*t*fade));
+                    ribbon(r,previous.x,previous.y,previous.z,point.x,point.y,point.z,.016*t,white,false);
                     if(particleTrails.get()) {
                         double wave=time*6+i*.64,dx=Math.cos(yaw)*Math.cos(wave)*.065*t,dz=Math.sin(yaw)*Math.cos(wave)*.065*t;
                         particle(r,point.x+dx,point.y+Math.sin(wave)*.065*t,point.z+dz,.025*t,tint);
@@ -303,7 +345,8 @@ public final class ZenithEffects extends Module {
             double fade=SkyPattern.fade(p.age+event.tickDelta,lifetime(p.kind)),dt=event.tickDelta;
             double x=p.px+(p.x-p.px)*dt,y=p.py+(p.y-p.py)*dt,z=p.pz+(p.z-p.pz)*dt;
             colorFor(p.kind,(int)(230*fade));white.set(p.kind==1?255:230,243,p.kind==1?207:255,tint.a);
-            particle(r,x,y,z,(.035+.07*fade)*effectSize.get(),tint);
+            if(p.kind==0)starFlash(r,x,y,z,(.05+.11*fade)*effectSize.get(),tint);
+            else particle(r,x,y,z,(.035+.07*fade)*effectSize.get(),tint);
             if(particleTrails.get()) {
                 soft.set(tint);soft.a/=3;ribbon(r,x,y,z,x-p.vx*3,y-p.vy*3,z-p.vz*3,.035*fade,soft,true);
                 ribbon(r,x,y,z,x-p.vx*2.4,y-p.vy*2.4,z-p.vz*2.4,.008*fade,tint,true);
@@ -319,33 +362,48 @@ public final class ZenithEffects extends Module {
         Vec3 p=burst.pos;double radius=(.2+(1-Math.pow(fade,3))*(burst.type==0?1.5:4.7))*size;
         colorFor(burst.type,(int)(220*fade));
         if(burst.type==0) {
-            ring(r,p.x,p.y,p.z,radius,.025+age*.035,tint,segments,true);
-            halo(r,p.x,p.y,p.z,radius*.65,(int)(65*fade*fade),0,segments,false);
+            // Fast concentric discs stay perpendicular to the CAMERA, including pitch/freecam.
+            double wave=(.22+(1-Math.pow(fade,2))*1.15)*size;
+            colorFor(0,(int)(210*fade));ring(r,p.x,p.y,p.z,wave,.014+age*.014,tint,segments,true);
+            if(age>.09) {
+                colorFor(0,(int)(140*fade));ring(r,p.x,p.y,p.z,wave*.73,.011,tint,segments,true);
+            }
+            halo(r,p.x,p.y,p.z,wave*.8,(int)(85*fade*fade),0,segments,false);
+            int rays=quality.get()==Quality.Low?6:10;
+            for(int i=0;i<rays;i++) {
+                double a=burst.phase+i*Math.TAU/rays,reach=(.18+age*(.65+(i%3)*.18))*size;
+                double px=p.x+(cameraRightX*Math.cos(a)+cameraUpX*Math.sin(a))*reach;
+                double py=p.y+cameraUpY*Math.sin(a)*reach;
+                double pz=p.z+(cameraRightZ*Math.cos(a)+cameraUpZ*Math.sin(a))*reach;
+                colorFor(0,(int)(225*fade));starFlash(r,px,py,pz,(.10+.08*(i%2))*fade*size,tint);
+            }
             if(slashes.get()) {
-                colorFor(0,(int)(240*fade));
-                orbital(r,p.x,p.y,p.z,(.5+age*1.3)*size,.045*fade,1.1,burst.phase,age*.8,Math.PI*1.4+age*.8,tint,segments);
-                orbital(r,p.x,p.y,p.z,(.7+age*1.1)*size,.025*fade,-.9,burst.phase+1,Math.PI*.6,Math.PI*1.7,tint,segments);
-                colorFor(0,(int)(80*fade));ring(r,p.x,p.y-.8,p.z,radius*.75,.012,tint,segments,false);
+                colorFor(0,(int)(190*fade));
+                orbital(r,p.x,p.y,p.z,(.5+age*1.3)*size,.025*fade,1.1,burst.phase,age*.8,Math.PI*1.4+age*.8,tint,segments);
             }
         } else if(burst.type==1) {
+            double centerY=p.y+1.05*size;
+            double domeRadius=(.35+(1-Math.pow(fade,3))*2.6)*size;
+            // The video blast has a luminous rising hemisphere and upright golden rings.
+            dome(r,p.x,p.y+.035,p.z,domeRadius,domeRadius*1.18,(int)(24*fade*flashStrength.get()),segments);
             for(int layer=0;layer<3;layer++) {
-                double t=age-layer*.075;if(t<0)continue;
-                colorFor(1,(int)(210*(1-t)*(1-layer*.2)));
-                double wave=(.3+(1-Math.pow(1-t,3))*(4.7-layer*.55))*size;
-                ring(r,p.x,p.y+.04+layer*.16,p.z,wave,.025+t*.055,tint,segments,false);
+                double t=age-layer*.055;if(t<0)continue;
+                double wave=(.25+(1-Math.pow(1-t,3))*(2.45-layer*.22))*size;
+                colorFor(1,(int)((210-layer*26)*(1-t)));
+                ring(r,p.x,centerY,p.z,wave,.022+t*.02,tint,segments,true);
             }
-            colorFor(1,(int)(210*fade));
-            orbital(r,p.x,p.y+.55,p.z,radius*.73,.027,1.12,burst.phase,0,Math.TAU,tint,segments);
-            orbital(r,p.x,p.y+.55,p.z,radius*.61,.021,-1.0,burst.phase+.9,0,Math.TAU,tint,segments);
-            halo(r,p.x,p.y+.55,p.z,(1.35+age*2)*size,(int)(190*fade*fade*flashStrength.get()),1,segments,false);
-            halo(r,p.x,p.y+.07,p.z,radius*1.12,(int)(110*fade*flashStrength.get()),1,segments,true);
+            colorFor(1,(int)(190*fade));ring(r,p.x,p.y+.035,p.z,radius,.035+age*.025,tint,segments,false);
+            colorFor(1,(int)(115*fade));ring(r,p.x,p.y+.065,p.z,radius*.72,.022,tint,segments,false);
+            halo(r,p.x,centerY,p.z,(.85+age*1.55)*size,(int)(175*fade*fade*flashStrength.get()),1,segments,false);
+            halo(r,p.x,p.y+.055,p.z,radius*1.13,(int)(115*fade*flashStrength.get()),1,segments,true);
+            halo(r,p.x,centerY,p.z,.36*size,(int)(240*fade*fade*flashStrength.get()),1,16,false);
             if(age<.65) {
                 colorFor(1,(int)(170*(1-age/.65)));
                 int rays=quality.get()==Quality.Low?8:16;
                 for(int i=0;i<rays;i++) {
-                    double a=burst.phase+i*Math.TAU/rays,extent=(1.1+age*5+(i%3)*.2)*size;
-                    ribbon(r,p.x+Math.cos(a)*.4,p.y+.35,p.z+Math.sin(a)*.4,
-                        p.x+Math.cos(a)*extent,p.y+.3+Math.sin(i*4.7)*extent*.3,p.z+Math.sin(a)*extent,.04*fade,tint,true);
+                    double a=burst.phase+i*Math.TAU/rays,extent=(.7+age*4+(i%3)*.2)*size;
+                    ribbon(r,p.x+Math.cos(a)*.4,centerY,p.z+Math.sin(a)*.4,
+                        p.x+Math.cos(a)*extent,centerY+Math.sin(i*4.7)*extent*.4,p.z+Math.sin(a)*extent,.022*fade,tint,true);
                 }
                 if(lightning.get()){filaments(r,p,burst.phase,time,radius,fade);lightningFrames++;}
             }
@@ -377,12 +435,14 @@ public final class ZenithEffects extends Module {
         halo(r,x,baseY+.025,z,1.2*size,75,1,segments,true);colorFor(1,170);
         ring(r,x,baseY+.04,z,.94*size,.024,tint,segments,false);
         ring(r,x,baseY+.045,z,.71*size,.014,tint,segments,false);
-        ring(r,x,y,z,.62*size,.015,tint,segments,true);
+        ring(r,x,y,z,.62*size,.012,tint,segments,true);
+        halo(r,x,y,z,.67*size,45,1,segments,false);
+        halo(r,x,y,z,.22*size,105,1,16,false);
         int count=quality.get()==Quality.Low?6:12;
         for(int i=0;i<count;i++) {
             double a=time*1.2+i*Math.TAU/count,b=a+.35;
             colorFor(1,180);ribbon(r,x+Math.cos(a)*.76*size,baseY+.05,z+Math.sin(a)*.76*size,x+Math.cos(b)*.91*size,baseY+.05,z+Math.sin(b)*.91*size,.018,tint,false);
-            particle(r,x+Math.cos(a)*.86*size,y+Math.sin(time*1.7+i)*.55,z+Math.sin(a)*.86*size,.055,tint);
+            if(orbitals.get())starFlash(r,x+Math.cos(a)*.86*size,y+Math.sin(time*1.7+i)*.55,z+Math.sin(a)*.86*size,.075,tint);
         }
         if(orbitals.get()) {
             colorFor(1,155);orbital(r,x,y,z,.78*size,.015,1.05,time*.45+id,0,Math.TAU,tint,segments);
@@ -413,15 +473,18 @@ public final class ZenithEffects extends Module {
         if(ambientMotes.get())for(int i=0;i<budget.motes();i++) {
             double x=event.offsetX+Math.sin(i*17.31)*7+Math.sin(time*.2+i)*.4,z=event.offsetZ+Math.cos(i*9.72)*7;
             double y=event.offsetY-1+(time*.15+i*.618)%4.5;
-            colorFor(4,(int)(35+25*Math.sin(time+i)));white.set(231,222,255,tint.a);
-            particle(r,x,y,z,.025+Math.sin(i)*.008,tint);
+            int kind=palette.get()==Palette.ZenithPurple?4:1;
+            double pulse=.65+.35*Math.sin(time*.9+i),radius=.10+(i%5)*.025;
+            halo(r,x,y,z,radius,(int)(45*pulse),kind,12,false);
+            halo(r,x,y,z,radius*.35,(int)(160*pulse),kind,8,false);
+            if(i%5==0){colorFor(kind,(int)(95*pulse));ribbon(r,x,y,z,x-.035,y-.16,z,.012,tint,true);}
         }
         if(rainStreaks.get()&&outdoors&&mc.level.getRainLevel(1)>.1) {
             double amount=mc.level.getRainLevel(1);
-            for(int i=0;i<budget.motes()*2;i++) {
+            for(int i=0;i<budget.motes()*4;i++) {
                 double x=event.offsetX+Math.sin(i*12.92)*8,z=event.offsetZ+Math.cos(i*7.32)*8;
                 double y=event.offsetY+5-((time*1.3+i*.618)%1)*11;
-                tint.set(190,206,255,(int)(50*amount));ribbon(r,x,y,z,x-.08,y-.7,z+.035,.006,tint,true);
+                tint.set(224,231,240,(int)(105*amount));ribbon(r,x,y,z,x-.06,y-.95,z+.025,.008,tint,true);
             }
             for(int i=0;i<rainRippleCount;i++) {
                 double phase=(time*.8+i*.618)%1;tint.set(192,211,255,(int)(50*amount*(1-phase)));
@@ -454,7 +517,6 @@ public final class ZenithEffects extends Module {
     /** An annulus has a translucent skirt and a white core, avoiding a full-screen shader pass. */
     private void ring(Renderer3D r, double x, double y, double z, double radius, double width, Color color, int segments, boolean vertical) {
         white.set(color.r>color.g?255:228,245,color.r>color.g?226:255,color.a); clear.set(color); clear.a = 0;
-        double yaw = mc.player.getYRot() * Math.PI / 180;
         for (int i = 0; i < segments; i++) {
             double a = i * Math.TAU / segments, b = (i+1) * Math.TAU / segments;
             double ax = Math.cos(a), az = Math.sin(a), bx = Math.cos(b), bz = Math.sin(b);
@@ -463,10 +525,12 @@ public final class ZenithEffects extends Module {
                 Color in = switch (band) { case 0 -> clear; case 1, 3 -> color; default -> white; };
                 Color out = switch (band) { case 0, 2 -> color; case 1 -> white; default -> clear; };
                 if (vertical) {
-                    r.quad(x+ax*inner*Math.cos(yaw),y+az*inner,z+ax*inner*Math.sin(yaw),
-                        x+bx*inner*Math.cos(yaw),y+bz*inner,z+bx*inner*Math.sin(yaw),
-                        x+bx*outer*Math.cos(yaw),y+bz*outer,z+bx*outer*Math.sin(yaw),
-                        x+ax*outer*Math.cos(yaw),y+az*outer,z+ax*outer*Math.sin(yaw),in,out,out,in);
+                    double arx=cameraRightX*ax+cameraUpX*az,ary=cameraUpY*az,arz=cameraRightZ*ax+cameraUpZ*az;
+                    double brx=cameraRightX*bx+cameraUpX*bz,bry=cameraUpY*bz,brz=cameraRightZ*bx+cameraUpZ*bz;
+                    r.quad(x+arx*inner,y+ary*inner,z+arz*inner,
+                        x+brx*inner,y+bry*inner,z+brz*inner,
+                        x+brx*outer,y+bry*outer,z+brz*outer,
+                        x+arx*outer,y+ary*outer,z+arz*outer,in,out,out,in);
                 } else {
                     r.quad(x+ax*inner,y,z+az*inner,x+bx*inner,y,z+bz*inner,
                         x+bx*outer,y,z+bz*outer,x+ax*outer,y,z+az*outer,in,out,out,in);
@@ -475,43 +539,71 @@ public final class ZenithEffects extends Module {
         }
     }
 
-    private void particle(Renderer3D r,double x,double y,double z,double size,Color color) {
-        double yaw=Math.toRadians(mc.player.getYRot()),pitch=Math.toRadians(mc.player.getXRot());
-        double rx=Math.cos(yaw)*size,rz=Math.sin(yaw)*size;
-        double ux=-Math.sin(yaw)*Math.sin(pitch)*size,uy=Math.cos(pitch)*size,uz=Math.cos(yaw)*Math.sin(pitch)*size;
-        clear.set(color);clear.a=0;white.a=color.a;
+    /** Four slim tapered rays and a compact glow form the recording's moving star glints. */
+    private void starFlash(Renderer3D r,double x,double y,double z,double size,Color color) {
+        soft.set(color);soft.a=color.a/3;
+        particle(r,x,y,z,size*.65,soft);
         for(int i=0;i<4;i++) {
-            double a=i*Math.PI/2,b=(i+1)*Math.PI/2;
+            double a=i*Math.PI/2,dx=(cameraRightX*Math.cos(a)+cameraUpX*Math.sin(a))*size;
+            double dy=cameraUpY*Math.sin(a)*size,dz=(cameraRightZ*Math.cos(a)+cameraUpZ*Math.sin(a))*size;
+            ribbon(r,x,y,z,x+dx,y+dy,z+dz,size*.08,color,true);
+        }
+    }
+
+    private void particle(Renderer3D r,double x,double y,double z,double size,Color color) {
+        clear.set(color);clear.a=0;white.set(255,248,238,color.a);
+        for(int i=0;i<8;i++) {
+            double a=i*Math.TAU/8,b=(i+1)*Math.TAU/8;
             r.triangles.ensureTriCapacity();
             int center=r.triangles.vec3(x,y,z).color(white).next();
-            int first=r.triangles.vec3(x+rx*Math.cos(a)+ux*Math.sin(a),y+uy*Math.sin(a),z+rz*Math.cos(a)+uz*Math.sin(a)).color(clear).next();
-            int second=r.triangles.vec3(x+rx*Math.cos(b)+ux*Math.sin(b),y+uy*Math.sin(b),z+rz*Math.cos(b)+uz*Math.sin(b)).color(clear).next();
+            int first=r.triangles.vec3(x+(cameraRightX*Math.cos(a)+cameraUpX*Math.sin(a))*size,
+                y+cameraUpY*Math.sin(a)*size,z+(cameraRightZ*Math.cos(a)+cameraUpZ*Math.sin(a))*size).color(clear).next();
+            int second=r.triangles.vec3(x+(cameraRightX*Math.cos(b)+cameraUpX*Math.sin(b))*size,
+                y+cameraUpY*Math.sin(b)*size,z+(cameraRightZ*Math.cos(b)+cameraUpZ*Math.sin(b))*size).color(clear).next();
             r.triangles.triangle(center,first,second);
+        }
+    }
+
+    /** A low-alpha hemispherical shell gives crystal blasts volume without a fullscreen pass. */
+    private void dome(Renderer3D r,double x,double y,double z,double radius,double height,int alpha,int segments) {
+        int layers=quality.get()==Quality.Low?3:5;
+        for(int row=0;row<layers;row++) {
+            double low=row*Math.PI/(layers*2),high=(row+1)*Math.PI/(layers*2);
+            double lowerRadius=Math.cos(low)*radius,upperRadius=Math.cos(high)*radius;
+            double lowerY=y+Math.sin(low)*height,upperY=y+Math.sin(high)*height;
+            colorFor(1,alpha);soft.set(tint);soft.a=(int)(alpha*(.45+.55*Math.sin(high)));
+            for(int i=0;i<segments;i++) {
+                double a=i*Math.TAU/segments,b=(i+1)*Math.TAU/segments;
+                r.quad(x+Math.cos(a)*lowerRadius,lowerY,z+Math.sin(a)*lowerRadius,
+                    x+Math.cos(b)*lowerRadius,lowerY,z+Math.sin(b)*lowerRadius,
+                    x+Math.cos(b)*upperRadius,upperY,z+Math.sin(b)*upperRadius,
+                    x+Math.cos(a)*upperRadius,upperY,z+Math.sin(a)*upperRadius,tint,soft,soft,tint);
+            }
         }
     }
     private void halo(Renderer3D r,double x,double y,double z,double radius,int alpha,int kind,int segments,boolean horizontal) {
         colorFor(kind,alpha);clear.set(tint);clear.a=0;white.set(255,245,226,alpha);
-        if(kind==0||kind==2)white.set(224,245,255,alpha);
+        if(kind==0)white.set(255,248,235,alpha);
+        else if(kind==2)white.set(224,245,255,alpha);
         else if(kind>=3)white.set(242,224,255,alpha);
-        double yaw=Math.toRadians(mc.player.getYRot()),pitch=Math.toRadians(mc.player.getXRot());
         for(int i=0;i<segments;i++) {
             double a=i*Math.TAU/segments,b=(i+1)*Math.TAU/segments;
             double ax,bx,ay,by,az,bz;
             if(horizontal){ax=Math.cos(a)*radius;az=Math.sin(a)*radius;ay=0;bx=Math.cos(b)*radius;bz=Math.sin(b)*radius;by=0;}
-            else {ax=(Math.cos(yaw)*Math.cos(a)-Math.sin(yaw)*Math.sin(pitch)*Math.sin(a))*radius;
-                ay=Math.cos(pitch)*Math.sin(a)*radius;az=(Math.sin(yaw)*Math.cos(a)+Math.cos(yaw)*Math.sin(pitch)*Math.sin(a))*radius;
-                bx=(Math.cos(yaw)*Math.cos(b)-Math.sin(yaw)*Math.sin(pitch)*Math.sin(b))*radius;
-                by=Math.cos(pitch)*Math.sin(b)*radius;bz=(Math.sin(yaw)*Math.cos(b)+Math.cos(yaw)*Math.sin(pitch)*Math.sin(b))*radius;}
+            else {ax=(cameraRightX*Math.cos(a)+cameraUpX*Math.sin(a))*radius;
+                ay=cameraUpY*Math.sin(a)*radius;az=(cameraRightZ*Math.cos(a)+cameraUpZ*Math.sin(a))*radius;
+                bx=(cameraRightX*Math.cos(b)+cameraUpX*Math.sin(b))*radius;
+                by=cameraUpY*Math.sin(b)*radius;bz=(cameraRightZ*Math.cos(b)+cameraUpZ*Math.sin(b))*radius;}
             r.triangles.ensureTriCapacity();
             int c=r.triangles.vec3(x,y,z).color(white).next(),v1=r.triangles.vec3(x+ax,y+ay,z+az).color(clear).next(),v2=r.triangles.vec3(x+bx,y+by,z+bz).color(clear).next();
             r.triangles.triangle(c,v1,v2);
         }
     }
     private void shard(Renderer3D r,double x,double y,double z,double size,double angle,Color color) {
-        double yaw=Math.toRadians(mc.player.getYRot()),dx=Math.cos(angle)*size,dy=Math.sin(angle)*size;
-        double ex=-dy,ey=dx,rx=Math.cos(yaw),rz=Math.sin(yaw);
-        r.quad(x+(dx+ex)*rx,y+dy+ey,z+(dx+ex)*rz,x+(dx-ex)*rx,y+dy-ey,z+(dx-ex)*rz,
-            x+(-dx-ex)*rx,y-dy-ey,z+(-dx-ex)*rz,x+(-dx+ex)*rx,y-dy+ey,z+(-dx+ex)*rz,color);
+        double dx=Math.cos(angle)*size,dy=Math.sin(angle)*size,ex=-dy*.35,ey=dx*.35;
+        double ax=cameraRightX*(dx+ex)+cameraUpX*(dy+ey),ay=cameraUpY*(dy+ey),az=cameraRightZ*(dx+ex)+cameraUpZ*(dy+ey);
+        double bx=cameraRightX*(dx-ex)+cameraUpX*(dy-ey),by=cameraUpY*(dy-ey),bz=cameraRightZ*(dx-ex)+cameraUpZ*(dy-ey);
+        r.quad(x+ax,y+ay,z+az,x+bx,y+by,z+bz,x-ax,y-ay,z-az,x-bx,y-by,z-bz,color);
     }
 
     private static final class Burst {

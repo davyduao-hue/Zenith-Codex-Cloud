@@ -1,0 +1,371 @@
+package me.pindour.catppuccin.gui.screens;
+
+import me.pindour.catppuccin.api.icons.CatppuccinIcons;
+import me.pindour.catppuccin.gui.themes.catppuccin.CatppuccinGuiTheme;
+import me.pindour.catppuccin.gui.themes.catppuccin.icons.CatppuccinBuiltinIcons;
+import me.pindour.catppuccin.gui.themes.catppuccin.widgets.container.WCatppuccinWindow;
+import me.pindour.catppuccin.gui.widgets.WGuiTexture;
+import me.pindour.catppuccin.utils.search.results.ModuleSearchResult;
+import me.pindour.catppuccin.utils.search.SearchUtils;
+import meteordevelopment.meteorclient.gui.GuiTheme;
+import meteordevelopment.meteorclient.gui.renderer.packer.GuiTexture;
+import meteordevelopment.meteorclient.gui.tabs.TabScreen;
+import meteordevelopment.meteorclient.gui.tabs.Tabs;
+import meteordevelopment.meteorclient.gui.utils.Cell;
+import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
+import meteordevelopment.meteorclient.gui.widgets.containers.WSection;
+import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
+import meteordevelopment.meteorclient.gui.widgets.containers.WWindow;
+import meteordevelopment.meteorclient.gui.widgets.input.WTextBox;
+import meteordevelopment.meteorclient.systems.config.Config;
+import meteordevelopment.meteorclient.systems.modules.Category;
+import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.utils.Utils;
+import meteordevelopment.meteorclient.utils.misc.NbtUtils;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static meteordevelopment.meteorclient.MeteorClient.mc;
+import static meteordevelopment.meteorclient.utils.Utils.getWindowHeight;
+import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
+import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL;
+
+import net.minecraft.util.Util;
+
+//? if >=1.21.5
+import net.minecraft.client.input.KeyEvent;
+//? if >=26.2
+import org.jspecify.annotations.NonNull;
+
+public class CatppuccinModulesScreen extends TabScreen {
+    private final CatppuccinGuiTheme theme;
+    private WCategoryController controller;
+
+    private boolean showGrid = false;
+    private boolean shouldSnap;
+    private int gridSize;
+
+    public CatppuccinModulesScreen(GuiTheme theme) {
+        super(theme, Tabs.get().getFirst());
+        this.theme = (CatppuccinGuiTheme) theme;
+    }
+
+    @Override
+    public void initWidgets() {
+        shouldSnap = theme.snapModuleCategories.get();
+        gridSize = theme.snappingGridSize.get();
+
+        // Categories
+        controller = add(new WCategoryController()).widget();
+
+        // Help
+        WVerticalList help = add(theme.verticalList()).pad(4).bottom().widget();
+
+        if (theme.modulesHelpText()) {
+            if (theme.catppuccinSearchScreen.get())
+                help.add(theme.label("Ctrl + F - Open search"));
+
+            help.add(theme.label("Left click - Toggle module"));
+            help.add(theme.label("Right click - Open module settings"));
+        }
+
+        // Credit
+        if (theme.modulesWatermark.get())
+            add(theme.label(theme.name.equals("Zenith 2.0") ? "Zenith 2.0 / Catppuccin by Pindour" : "Catppuccin Theme by Pindour")).bottom().right();
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        controller.refresh();
+    }
+
+    @Override
+    public void extractBackground(@NonNull GuiGraphicsExtractor context, int mouseX, int mouseY, float deltaTicks) {
+        super.extractBackground(context, mouseX, mouseY, deltaTicks);
+
+        if (!showGrid) return;
+
+        int color = theme.overlay0Color().copy().a(60).getPacked();
+        int windowWidth = Utils.getWindowWidth();
+        int windowHeight = Utils.getWindowHeight();
+
+        for (int x = 0; x <= windowWidth; x += gridSize) {
+            context.verticalLine(x, 0, windowHeight, color);
+        }
+
+        for (int y = 0; y <= windowHeight; y += gridSize) {
+            context.horizontalLine(0, windowWidth, y, color);
+        }
+    }
+
+    @Override
+    public boolean keyPressed(@NonNull KeyEvent input) {
+        super.keyPressed(input);
+
+        if (!theme.catppuccinSearchScreen.get()) return false;
+
+        //? if >=1.21.5 {
+        int keyCode = input.key();
+        int modifiers = input.modifiers();
+        //? }
+
+        boolean control = Util.getPlatform() == Util.OS.OSX ? modifiers == GLFW_MOD_SUPER : modifiers == GLFW_MOD_CONTROL;
+
+        if (control && keyCode == GLFW_KEY_F) {
+            mc.gui.setScreen(new CatppuccinSearchScreen(theme));
+            return true;
+        }
+
+        return false;
+    }
+
+    // Category
+
+    protected WWindow createCategory(WContainer c, Category category, List<Module> moduleList) {
+        WGuiTexture icon = theme.categoryIcons()
+                ? theme.texture(getIconForCategory(category), theme.textHeight())
+                : null;
+
+        WCatppuccinWindow w = (WCatppuccinWindow) theme.window(icon, category.name);
+        w.id = category.name;
+        w.padding = theme.pad();
+        w.spacing = 0;
+
+        if (shouldSnap) w.initSnapping(this, gridSize);
+
+        c.add(w);
+        w.view.scrollOnlyWhenMouseOver = true;
+        w.view.hasScrollBar = false;
+        w.view.spacing = 0;
+        w.view.maxHeight -= 120;
+
+        for (Module module : moduleList) {
+            w.add(theme.module(module)).expandX();
+        }
+
+        return w;
+    }
+
+    // Search
+
+    protected void createSearchW(WContainer w, String text) {
+        if (!text.isEmpty()) {
+            int limit = Config.get().moduleSearchCount.get();
+
+            // Modules
+            List<ModuleSearchResult> modules = SearchUtils.searchModules(text, 50);
+
+            if (!modules.isEmpty()) {
+                WSection section = w.add(theme.section("Modules")).expandX().widget();
+                section.spacing = 0;
+
+                for (int i = 0; i < Math.min(modules.size(), limit); i++) {
+                    ModuleSearchResult result = modules.get(i);
+                    section.add(theme.module(result.module(), result.title())).expandX();
+                }
+            }
+
+            // Settings
+            List<Module> settingModules = Modules.get().searchSettingTitles(text).stream().toList();
+
+            if (!settingModules.isEmpty()) {
+                WSection section = w.add(theme.section("Settings")).expandX().widget();
+                section.spacing = 0;
+
+                for (int i = 0; i < Math.min(settingModules.size(), limit); i++) {
+                    section.add(theme.module(settingModules.get(i))).expandX();
+                }
+            }
+        }
+    }
+
+    protected WWindow createSearch(WContainer c) {
+        WCatppuccinWindow w = (WCatppuccinWindow) theme.window(
+                theme.texture(CatppuccinBuiltinIcons.SEARCH.texture(), theme.textHeight()),
+                "Search"
+        );
+
+        w.id = "search";
+
+        if (shouldSnap) w.initSnapping(this, gridSize);
+
+        c.add(w);
+        w.view.scrollOnlyWhenMouseOver = true;
+        w.view.hasScrollBar = false;
+        w.view.maxHeight -= 20;
+
+        WVerticalList l = theme.verticalList();
+
+        WTextBox text = w.add(theme.textBox("", "Search modules...")).expandX().padBottom(4).widget();
+        text.setFocused(true);
+        text.action = () -> {
+            l.clear();
+            createSearchW(l, text.get());
+        };
+
+        w.add(l).expandX();
+        createSearchW(l, text.get());
+
+        return w;
+    }
+
+    // Favorites
+
+    protected Cell<WWindow> createFavorites(WContainer c) {
+        boolean hasFavorites = Modules.get().getAll().stream().anyMatch(module -> module.favorite);
+        if (!hasFavorites) return null;
+
+        WCatppuccinWindow w = (WCatppuccinWindow) theme.window(
+                theme.texture(CatppuccinBuiltinIcons.BOOKMARK_YES.texture(), theme.textHeight()),
+                "Favorites"
+        );
+
+        w.id = "favorites";
+        w.padding = 0;
+        w.spacing = 0;
+
+        if (shouldSnap) w.initSnapping(this, gridSize);
+
+        Cell<WWindow> cell = c.add(w);
+        w.view.scrollOnlyWhenMouseOver = true;
+        w.view.hasScrollBar = false;
+        w.view.spacing = 0;
+
+        createFavoritesW(w);
+        return cell;
+    }
+
+    protected boolean createFavoritesW(WWindow w) {
+        List<Module> modules = new ArrayList<>();
+
+        for (Module module : Modules.get().getAll()) {
+            if (module.favorite) {
+                modules.add(module);
+            }
+        }
+
+        modules.sort((o1, o2) -> String.CASE_INSENSITIVE_ORDER.compare(o1.name, o2.name));
+
+        for (Module module : modules) {
+            w.add(theme.module(module)).expandX();
+        }
+
+        return !modules.isEmpty();
+    }
+
+    @Override
+    public boolean toClipboard() {
+        return NbtUtils.toClipboard(Modules.get());
+    }
+
+    @Override
+    public boolean fromClipboard() {
+        return NbtUtils.fromClipboard(Modules.get());
+    }
+
+    @Override
+    public void reload() {}
+
+    // Stuff
+
+    protected class WCategoryController extends WContainer {
+        public final List<WWindow> windows = new ArrayList<>();
+        private Cell<WWindow> favorites;
+
+        @Override
+        public void init() {
+            for (Category category : Modules.loopCategories()) {
+                List<Module> modules = Modules.get().getGroup(category);
+
+                //? if >=1.21.4 {
+                modules = modules.stream()
+                        .filter(m -> !Config.get().hiddenModules.get().contains(m))
+                        .toList();
+                //?}
+
+                if (!modules.isEmpty()) {
+                    windows.add(createCategory(this, category, modules));
+                }
+            }
+
+            refresh();
+
+            CatppuccinGuiTheme catppuccinTheme = (CatppuccinGuiTheme) theme;
+
+            if (!catppuccinTheme.catppuccinSearchScreen.get())
+                windows.add(createSearch(this));
+        }
+
+        protected void refresh() {
+            if (favorites == null) {
+                favorites = createFavorites(this);
+                if (favorites != null) windows.add(favorites.widget());
+            }
+            else {
+                favorites.widget().clear();
+
+                if (!createFavoritesW(favorites.widget())) {
+                    remove(favorites);
+                    windows.remove(favorites.widget());
+                    favorites = null;
+                }
+            }
+        }
+
+        @Override
+        protected void onCalculateWidgetPositions() {
+            double pad = theme.scale(4);
+            double h = theme.scale(40);
+
+            double x = this.x + pad;
+            double y = this.y;
+
+            for (Cell<?> cell : cells) {
+                double windowWidth = getWindowWidth();
+                double windowHeight = getWindowHeight();
+
+                if (x + cell.width > windowWidth) {
+                    x = x + pad;
+                    y += h;
+                }
+
+                if (x > windowWidth) {
+                    x = windowWidth / 2.0 - cell.width / 2.0;
+                    if (x < 0) x = 0;
+                }
+                if (y > windowHeight) {
+                    y = windowHeight / 2.0 - cell.height / 2.0;
+                    if (y < 0) y = 0;
+                }
+
+                cell.x = x;
+                cell.y = y;
+
+                cell.width = cell.widget().width;
+                cell.height = cell.widget().height;
+
+                cell.alignWidget();
+
+                x += cell.width + pad;
+            }
+        }
+    }
+
+    private GuiTexture getIconForCategory(Category category) {
+        GuiTexture icon = CatppuccinIcons.getCategoryIcon(category.name);
+        return icon != null ? icon : CatppuccinBuiltinIcons.QUESTION_MARK.texture();
+    }
+
+    public void showGrid(boolean show) {
+        showGrid = show;
+    }
+
+    public boolean showGrid() {
+        return showGrid;
+    }
+}

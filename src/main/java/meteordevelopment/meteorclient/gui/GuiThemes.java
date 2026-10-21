@@ -32,6 +32,7 @@ public class GuiThemes {
     @PreInit
     public static void init() {
         add(new MeteorGuiTheme());
+        add(new me.pindour.catppuccin.gui.themes.catppuccin.CatppuccinGuiTheme());
         add(new meteordevelopment.meteorclient.zenith.ZenithGuiTheme());
     }
 
@@ -47,7 +48,7 @@ public class GuiThemes {
             }
         }
 
-        if (theme == null) select("Zenith");
+        if (theme == null) select("Zenith 2.0");
     }
 
     public static void add(GuiTheme theme) {
@@ -65,6 +66,8 @@ public class GuiThemes {
     }
 
     public static void select(String name) {
+        // Keep saved profiles and addons using the previous theme name working.
+        if (name.equals("Zenith")) name = "Zenith 2.0";
         // Find theme with the provided name
         GuiTheme theme = null;
 
@@ -85,6 +88,9 @@ public class GuiThemes {
             // Load new theme
             try {
                 File file = new File(THEMES_FOLDER, get().name + ".nbt");
+                if (!file.exists() && get().name.equals("Zenith 2.0")) {
+                    file = new File(THEMES_FOLDER, "Zenith.nbt");
+                }
 
                 if (file.exists()) {
                     CompoundTag tag = NbtIo.read(file.toPath());

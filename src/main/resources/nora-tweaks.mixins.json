@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "package": "me.noramibu.tweaks.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "plugin": "me.noramibu.tweaks.mixin.NoraTweaksMixinPlugin",
+  "mixins": [
+    "CountPlacementModifierAccessor",
+    "HeightRangePlacementModifierAccessor",
+    "RarityFilterPlacementModifierAccessor"
+  ],
+  "client": [
+    "MinecraftClientMixin",
+    "ModulesScreenMixin",
+    "catppuccin.CatppuccinModulesScreenMixin",
+    "baritone.MineProcessMixin",
+    "baritone.MineProcessMixinApi",
+    "catpuccin.CatpuccinModulesScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

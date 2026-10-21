@@ -33,6 +33,7 @@ public abstract class GuiMixin {
     @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "setScreen", at = @At("HEAD"), argsOnly = true)
     private Screen zenith$mainMenu(Screen screen) {
         return screen instanceof net.minecraft.client.gui.screens.TitleScreen
+            && !(screen instanceof meteordevelopment.meteorclient.zenith.ZenithMenuScreen)
             ? new meteordevelopment.meteorclient.zenith.ZenithMenuScreen() : screen;
     }
 

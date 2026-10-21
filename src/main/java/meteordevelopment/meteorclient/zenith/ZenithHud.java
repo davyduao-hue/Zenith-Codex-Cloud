@@ -1,15 +1,21 @@
 package meteordevelopment.meteorclient.zenith;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.events.meteor.KeyInputEvent;
+import meteordevelopment.meteorclient.events.meteor.MouseClickEvent;
+import meteordevelopment.meteorclient.mixin.KeyMappingAccessor;
 import meteordevelopment.meteorclient.mixin.MinecraftAccessor;
 import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.hud.*;
+import meteordevelopment.meteorclient.utils.misc.input.Input;
+import meteordevelopment.meteorclient.utils.misc.input.KeyAction;
 import meteordevelopment.meteorclient.utils.render.color.Color;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
+import meteordevelopment.orbit.EventHandler;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.gui.components.PlayerFaceExtractor;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -25,10 +31,15 @@ public final class ZenithHud extends HudElement {
     private static final Color TEXT = new Color(240, 233, 255), MUTED = new Color(166, 156, 184);
     static {
         for (Kind kind : Kind.values()) INFOS.put(kind, new HudElementInfo<>(GROUP,
-            "zenith-" + kind.name().toLowerCase(Locale.ROOT), "Zenith " + kind,
-            "Reference-inspired " + kind.name().toLowerCase(Locale.ROOT) + " widget.", () -> new ZenithHud(kind)));
+            "zenith-" + kind.name().toLowerCase(Locale.ROOT), "Zenith " + (kind==Kind.Radar?"Look Direction":kind),
+            kind==Kind.Radar?"Your camera's yaw/pitch movement with a mint aiming dot and click counters.":
+                "Reference-inspired " + kind.name().toLowerCase(Locale.ROOT) + " widget.", () -> new ZenithHud(kind)));
     }
-    public static void register(Hud hud) { INFOS.values().forEach(hud::register); }
+    private static final InputFeedback INPUT_FEEDBACK=new InputFeedback();
+    public static void register(Hud hud) {
+        INFOS.values().forEach(hud::register);
+        if(!INPUT_FEEDBACK.subscribed){MeteorClient.EVENT_BUS.subscribe(INPUT_FEEDBACK);INPUT_FEEDBACK.subscribed=true;}
+    }
     public static void defaults(Hud hud) {
         hud.active = true;
         int offset=(int)Math.round(270*initialScale());
@@ -52,22 +63,78 @@ public final class ZenithHud extends HudElement {
         .description("Panel tint and opacity.").defaultValue(new SettingColor(15, 12, 24, 182)).build());
     private final Setting<Boolean> shadow = general.add(new BoolSetting.Builder().name("text-shadow")
         .description("Draw a subtle text shadow.").defaultValue(false).build());
-    private final Setting<Integer> radarRange = general.add(new IntSetting.Builder().name("radar-range")
-        .description("Radar radius in blocks.").defaultValue(48).range(8, 128).sliderRange(8, 128)
+    private final Setting<Double> lookSensitivity = general.add(new DoubleSetting.Builder().name("look-sensitivity")
+        .description("How far yaw and pitch movement deflect the aiming dot.").defaultValue(1).range(.1, 4).sliderRange(.25, 3)
         .visible(() -> kind == Kind.Radar).build());
+    private final Setting<Boolean> showAngles = general.add(new BoolSetting.Builder().name("show-angles")
+        .description("Show the current yaw and pitch below the direction circle.").defaultValue(false)
+        .visible(()->kind==Kind.Radar).build());
     private final Setting<Boolean> showDetails = general.add(new BoolSetting.Builder().name("details")
         .description("Show secondary statistics and labels.").defaultValue(true).build());
     private final Setting<Boolean> referenceColors = general.add(new BoolSetting.Builder().name("reference-colors")
-        .description("Use the footage's teal graphs/radar, white keys, and pale green health bar.").defaultValue(true).build());
+        .description("Use the footage's mint aiming dot and graphs, white keys, and pale green health bar.").defaultValue(true).build());
     private final Setting<Boolean> dock = general.add(new BoolSetting.Builder().name("dock-to-hotbar")
         .description("Follow the real hotbar width and GUI scale; dragging in the editor disables docking.")
         .defaultValue(true).visible(()->kind==Kind.Radar||kind==Kind.Keys).build());
-    private final Setting<Boolean> heads = general.add(new BoolSetting.Builder().name("player-heads")
-        .description("Display actual player faces on the radar.").defaultValue(true).visible(()->kind==Kind.Radar).build());
     private final Map<String, Integer> potionMax = new HashMap<>();
     private final Map<String,KeyAnimation> keyAnimations=new HashMap<>();
+    private static final String[] KEY_LABELS={"W","A","S","D","LMB","RMB","Jump"};
+    private final UiMotion.LookMotion lookMotion=new UiMotion.LookMotion();
+    private final double[] lookTrailX=new double[12],lookTrailY=new double[12],lookTrailTime=new double[12];
+    private double lookClock,lookLastSample;
+    private int lookTrailIndex;
     private double hpRatio = 1;
-    private static final class KeyAnimation { double amount,pulse=1;boolean down; }
+    private long acceptedPresses;
+    private static final class KeyAnimation {
+        final UiMotion.PressAnimation motion=new UiMotion.PressAnimation();
+        long seenPress;
+    }
+
+    /** One listener for all HUD instances; a press/release between rendered frames is still visible. */
+    private static final class InputFeedback {
+        private final long[] presses=new long[7],times=new long[7];
+        private boolean subscribed;
+        @EventHandler private void onKey(KeyInputEvent event) {
+            if(event.action!=KeyAction.Press||mc.player==null||mc.gui.screen()!=null)return;
+            for(int i=0;i<7;i++)if(binding(i).matches(event.input))record(i);
+        }
+        @EventHandler private void onMouse(MouseClickEvent event) {
+            if(event.action!=KeyAction.Press||mc.player==null||mc.gui.screen()!=null)return;
+            for(int i=0;i<7;i++) {
+                var key=((KeyMappingAccessor)binding(i)).meteor$getKey();
+                if(key.getType()==InputConstants.Type.MOUSE&&key.getValue()==event.button())record(i);
+            }
+        }
+        private void record(int index) {presses[index]++;times[index]=System.nanoTime();}
+    }
+    private static KeyMapping binding(int index) {
+        return switch(index) {
+            case 0->mc.options.keyUp;case 1->mc.options.keyLeft;case 2->mc.options.keyDown;
+            case 3->mc.options.keyRight;case 4->mc.options.keyAttack;case 5->mc.options.keyUse;
+            default->mc.options.keyJump;
+        };
+    }
+    private static boolean pressed(int index) {
+        if(mc.player==null||mc.gui.screen()!=null)return false;
+        KeyMapping bind=binding(index);
+        var key=((KeyMappingAccessor)bind).meteor$getKey();
+        return bind.isDown()||(key.getType()==InputConstants.Type.MOUSE?Input.isButtonPressed(key.getValue()):
+            key.getType()==InputConstants.Type.KEYSYM&&Input.isKeyPressed(key.getValue()));
+    }
+
+    /** Read-only feedback used by integration checks and addon HUD previews. */
+    public record Feedback(Kind kind,double lookX,double lookY,List<Double> keyAmounts,int activeRipples,long acceptedPresses) {}
+    public Feedback feedback() {
+        List<Double> amounts=new ArrayList<>(7);
+        int ripples=0;
+        for(String key:KEY_LABELS) {
+            KeyAnimation animation=keyAnimations.get(key);
+            amounts.add(animation==null?0:animation.motion.amount());
+            if(animation!=null)for(int i=0;i<UiMotion.PressAnimation.RIPPLE_COUNT;i++)
+                if(animation.motion.rippleProgress(i)<1)ripples++;
+        }
+        return new Feedback(kind,lookMotion.x(),lookMotion.y(),List.copyOf(amounts),ripples,acceptedPresses);
+    }
 
     private ZenithHud(Kind kind) { super(INFOS.get(kind)); this.kind = kind; }
     private static double initialScale() { return Math.min(1,Math.max(.6,meteordevelopment.meteorclient.utils.Utils.getWindowWidth()/1280.0)); }
@@ -166,68 +233,93 @@ public final class ZenithHud extends HudElement {
 
     private void radar(HudRenderer r) {
         setSize(s(132),s(153));dockToHotbar();panel(r,132,153);
-        Color tint=dataColor(),grid=new Color(213,222,229,42);
+        Color tint=dataColor(),grid=new Color(213,222,229,37);
         int left=Zenith.INSTANCE.cps(false),right=Zenith.INSTANCE.cps(true);
         ZenithDraw.rounded(r,x+s(7),y+s(7),s(55),s(17),s(3),new Color(255,255,255,18));
-        ZenithDraw.rounded(r,x+s(68),y+s(7),s(57),s(17),s(3),new Color(tint.r,tint.g,tint.b,58));
-        text(r,"L "+left,16,11,MUTED,.42);text(r,"R "+right,77,11,TEXT,.42);
-        circle(r,66,88,50,1,grid);circle(r,66,88,25,1,new Color(213,222,229,23));
-        line(r,16,88,116,88,new Color(213,222,229,25));line(r,66,38,66,138,new Color(213,222,229,25));
-        r.triangle(x+s(66),y+s(88),x+s(83),y+s(41),x+s(49),y+s(41),new Color(tint.r,tint.g,tint.b,14));
-        ZenithDraw.disc(r,x+s(66),y+s(88),s(17),new Color(tint.r,tint.g,tint.b,100),new Color(tint.r,tint.g,tint.b,0));
-        ZenithDraw.disc(r,x+s(66),y+s(88),s(4.2),new Color(233,255,249),new Color(tint.r,tint.g,tint.b,120));
-        if(mc.player==null||mc.level==null)return;
-        double yaw=mc.player.getYRot();
-        String[] cardinals={"N","E","S","W"};double[][] vectors={{0,-1},{1,0},{0,1},{-1,0}};
-        for(int i=0;i<4;i++) {
-            double[] projected=UiMotion.radar(vectors[i][0],vectors[i][1],yaw);
-            text(r,cardinals[i],63+projected[0]*56,84+projected[1]*56,MUTED,.33);
+        ZenithDraw.rounded(r,x+s(68),y+s(7),s(57),s(17),s(3),new Color(tint.r,tint.g,tint.b,right>0?115:18));
+        text(r,"L "+left,16,11,left>0?TEXT:MUTED,.42);text(r,"R "+right,77,11,right>0?TEXT:MUTED,.42);
+        circle(r,66,88,50,1,grid);circle(r,66,88,25,1,new Color(213,222,229,19));
+        line(r,16,88,116,88,new Color(213,222,229,17));line(r,66,38,66,138,new Color(213,222,229,17));
+
+        double dt=Math.max(0,Math.min(.25,r.delta));
+        lookClock+=dt;
+        if(mc.player==null||mc.level==null)lookMotion.reset();
+        else lookMotion.update(mc.gameRenderer.mainCamera().yRot(),mc.gameRenderer.mainCamera().xRot(),
+            r.delta,lookSensitivity.get());
+        double px=66+lookMotion.x()*43,py=88+lookMotion.y()*43;
+        if(lookClock-lookLastSample>=.025) {
+            lookTrailX[lookTrailIndex]=px;lookTrailY[lookTrailIndex]=py;lookTrailTime[lookTrailIndex]=lookClock;
+            lookTrailIndex=(lookTrailIndex+1)%lookTrailX.length;lookLastSample=lookClock;
         }
-        for(Player p:mc.level.players()) {
-            if(p==mc.player)continue;
-            double dx=p.getX()-mc.player.getX(),dz=p.getZ()-mc.player.getZ();
-            if(dx*dx+dz*dz>radarRange.get()*radarRange.get())continue;
-            double[] projected=UiMotion.radar(dx,dz,yaw);
-            double px=66+projected[0]*43/radarRange.get(),py=88+projected[1]*43/radarRange.get();
-            if(heads.get()&&p instanceof AbstractClientPlayer player) {
-                int hx=(int)(x+s(px-4)),hy=(int)(y+s(py-4)),size=(int)Math.max(5,s(9));
-                var skin=player.getSkin();r.post(()->PlayerFaceExtractor.extractRenderState(r.graphics,skin,hx,hy,size));
-            } else {ZenithDraw.disc(r,x+s(px),y+s(py),s(3),tint,new Color(tint.r,tint.g,tint.b,0));}
+        for(int i=0;i<lookTrailX.length;i++) {
+            double age=lookClock-lookTrailTime[i];
+            if(age<.22&&lookTrailTime[i]>0)ZenithDraw.disc(r,x+s(lookTrailX[i]),y+s(lookTrailY[i]),s(3),
+                new Color(tint.r,tint.g,tint.b,(int)((1-age/.22)*30)),new Color(tint.r,tint.g,tint.b,0));
         }
+        ZenithDraw.disc(r,x+s(px),y+s(py),s(14),new Color(tint.r,tint.g,tint.b,105),new Color(tint.r,tint.g,tint.b,0));
+        ZenithDraw.disc(r,x+s(px),y+s(py),s(6),new Color(tint.r,tint.g,tint.b,210),new Color(tint.r,tint.g,tint.b,0));
+        ZenithDraw.disc(r,x+s(px),y+s(py),s(3),new Color(242,255,250,255),new Color(130,255,219,200));
+        if(showAngles.get()&&mc.player!=null)text(r,String.format(Locale.ROOT,"%.0f° / %.0f°",
+            UiMotion.angleDelta(0,mc.gameRenderer.mainCamera().yRot()),mc.gameRenderer.mainCamera().xRot()),
+            20,140,MUTED,.32);
     }
 
-    private void key(HudRenderer r,String label,double dx,double dy,double w,double h,boolean down) {
-        KeyAnimation anim=keyAnimations.computeIfAbsent(label,_ -> new KeyAnimation());
-        if(down&&!anim.down)anim.pulse=0;
-        anim.down=down;anim.pulse=Math.min(1,anim.pulse+Math.min(.1,r.delta)*2.8);
-        anim.amount=UiMotion.approach(anim.amount,down?1:0,down?28:15,r.delta);
-        double bounce=anim.amount*.6;
-        for(int i=3;i>0;i--)ZenithDraw.rounded(r,x+s(dx-i),y+s(dy-i+bounce),s(w+i*2),s(h+i*2),s(6+i),new Color(245,244,255,(int)(anim.amount*(11-i*2))));
-        ZenithDraw.rounded(r,x+s(dx),y+s(dy+bounce),s(w),s(h),s(5),ZenithDraw.mix(background.get(),new Color(249,248,252,250),anim.amount));
-        if(anim.pulse<1) {
-            double inset=(1-anim.pulse)*Math.min(w,h)*.45;
-            ZenithDraw.rounded(r,x+s(dx+inset),y+s(dy+inset),s(w-inset*2),s(h-inset*2),s(4),new Color(255,255,255,(int)((1-anim.pulse)*48)));
+    private void key(HudRenderer r,int index,double dx,double dy,double w,double h) {
+        String label=KEY_LABELS[index];
+        KeyAnimation animation=keyAnimations.computeIfAbsent(label,_ -> new KeyAnimation());
+        long press=INPUT_FEEDBACK.presses[index];
+        boolean fresh=press!=animation.seenPress&&System.nanoTime()-INPUT_FEEDBACK.times[index]<250_000_000L;
+        if(fresh)acceptedPresses+=Math.max(0,press-animation.seenPress);
+        animation.seenPress=press;
+        animation.motion.update(pressed(index),fresh,r.delta);
+        double amount=animation.motion.amount(),bounce=amount*.6;
+        Color active=referenceColors.get()?new Color(249,248,252,250):new Color(accent.get().r,accent.get().g,accent.get().b,250);
+        for(int i=3;i>0;i--)ZenithDraw.rounded(r,x+s(dx-i),y+s(dy-i+bounce),s(w+i*2),s(h+i*2),s(6+i),
+            new Color(active.r,active.g,active.b,(int)(amount*(13-i*2))));
+        ZenithDraw.rounded(r,x+s(dx),y+s(dy+bounce),s(w),s(h),s(5),
+            ZenithDraw.mix(new Color(222,215,240,45),active,amount));
+        ZenithDraw.rounded(r,x+s(dx+.7),y+s(dy+.7+bounce),s(w-1.4),s(h-1.4),s(4.4),
+            ZenithDraw.mix(background.get(),active,amount));
+        Color foreground=ZenithDraw.mix(TEXT,new Color(25,24,29),amount);
+        if(index==6) {
+            ZenithDraw.rounded(r,x+s(dx+w/2-21),y+s(dy+h/2-1+bounce),s(42),s(2),s(1),foreground);
+            return;
         }
         double width=r.textWidth(label,false,fontScale(.55))/scale.get();
-        Color text=ZenithDraw.mix(TEXT,new Color(25,24,29),anim.amount);
-        text(r,label,dx+(w-width)/2,dy+(h>35?7:h/2-5)+bounce,text,.55);
-        if(showDetails.get()&&(label.equals("LMB")||label.equals("RMB"))) {
-            String cps=Zenith.INSTANCE.cps(label.equals("RMB"))+" CPS";
-            double tw=r.textWidth(cps,false,fontScale(.44))/scale.get();text(r,cps,dx+(w-tw)/2,dy+23+bounce,ZenithDraw.mix(MUTED,new Color(58,56,62),anim.amount),.44);
+        text(r,label,dx+(w-width)/2,dy+(h>35?7:h/2-5)+bounce,foreground,.55);
+        if(showDetails.get()&&(index==4||index==5)) {
+            String cps=Zenith.INSTANCE.cps(index==5)+" CPS";
+            double tw=r.textWidth(cps,false,fontScale(.44))/scale.get();
+            text(r,cps,dx+(w-tw)/2,dy+23+bounce,ZenithDraw.mix(MUTED,new Color(58,56,62),amount),.44);
+        }
+    }
+    private void keyRipples(HudRenderer r,int index,double cx,double cy,double radius) {
+        KeyAnimation animation=keyAnimations.get(KEY_LABELS[index]);
+        if(animation==null)return;
+        Color tint=referenceColors.get()?new Color(255,255,255):accent.get();
+        for(int i=0;i<UiMotion.PressAnimation.RIPPLE_COUNT;i++) {
+            double progress=animation.motion.rippleProgress(i);
+            if(progress>=1)continue;
+            double ease=1-Math.pow(1-progress,2),size=5+radius*ease;
+            int alpha=(int)(Math.pow(1-progress,1.5)*145);
+            // Rings are intentionally unclipped: the reference expands beyond the tile edge.
+            circle(r,cx,cy,size,1,new Color(tint.r,tint.g,tint.b,alpha));
+            circle(r,cx,cy,size+1.6,1,new Color(tint.r,tint.g,tint.b,alpha/5));
         }
     }
     private void keys(HudRenderer r) {
         setSize(s(132),s(146));dockToHotbar();
-        boolean game=mc.player!=null&&mc.gui.screen()==null;
-        key(r,"W",45,0,40,35,game&&mc.options.keyUp.isDown());
-        key(r,"A",2,39,40,35,game&&mc.options.keyLeft.isDown());
-        key(r,"S",45,39,40,35,game&&mc.options.keyDown.isDown());
-        key(r,"D",88,39,40,35,game&&mc.options.keyRight.isDown());
-        key(r,"LMB",2,78,62,43,game&&(mc.options.keyAttack.isDown()||meteordevelopment.meteorclient.utils.misc.input.Input.isButtonPressed(0)));
-        key(r,"RMB",67,78,61,43,game&&(mc.options.keyUse.isDown()||meteordevelopment.meteorclient.utils.misc.input.Input.isButtonPressed(1)));
-        ZenithDraw.rounded(r,x+s(2),y+s(126),s(126),s(17),s(6),new Color(248,247,251,235));
-        ZenithDraw.rounded(r,x+s(44),y+s(133),s(42),s(2),s(1),new Color(39,37,43));
-        if(game&&mc.options.keyJump.isDown())ZenithDraw.rounded(r,x,y+s(124),s(132),s(21),s(7),new Color(255,255,255,42));
+        key(r,0,45,0,40,35);
+        key(r,1,2,39,40,35);
+        key(r,2,45,39,40,35);
+        key(r,3,88,39,40,35);
+        key(r,4,2,78,62,43);
+        key(r,5,67,78,61,43);
+        key(r,6,2,126,126,17);
+        keyRipples(r,0,65,17.5,35);keyRipples(r,1,22,56.5,35);
+        keyRipples(r,2,65,56.5,35);keyRipples(r,3,108,56.5,35);
+        keyRipples(r,4,33,99.5,42);keyRipples(r,5,97.5,99.5,42);
+        keyRipples(r,6,65,134.5,42);
     }
 
     private void potions(HudRenderer r) {
