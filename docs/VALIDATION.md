@@ -1,14 +1,14 @@
 # Validation — 2026-10-21
 
-Update **2.0.5**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
+Update **2.0.6**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 25.0.4.1, Gradle 9.6.1 and Fabric Loom 1.17.21.
 
 | Check | Result |
 | --- | --- |
 | Client build | `./gradlew build` passed |
 | Unit tests | 25 tests, zero failures/errors/skips: frame history, frame-rate-independent key fades, short taps, bounded click ripples, camera-angle wrapping/recentering, HUD docking, sky noise and quality budgets |
-| Graphical integration | 137 successful checks with Glazed 26.2-n-17.2, Fabric API 0.161.0+26.2 and the separate example addon; `build/smoke/result.json` reports `passed: true` |
-| Standalone integration | 118 checks passed with no Glazed or full Fabric API installed (separate example addon retained) |
+| Graphical integration | 162 successful checks with Glazed 26.2-n-17.2, Fabric API 0.161.0+26.2 and the separate example addon; `build/smoke/result.json` reports `passed: true` |
+| Standalone integration | 143 checks passed with no Glazed or full Fabric API installed (separate example addon retained) |
 | Mixin/shader initialization | No mixin audit/application errors or shader compilation failures in the final run |
 | Main menu | Zenith is recognized as a TitleScreen; native GUI eligibility, return from theme settings and actual world disconnect retain the custom menu |
 | Glazed compatibility | 80 external Glazed modules registered; all 240 settings screens opened across three themes; three external setting factories retained; Nora Deepslate and Zenith Aim Assist retained their separate class identities |
@@ -16,6 +16,7 @@ Update **2.0.5**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 | Larger HUD | New size multiplier defaults to 2 on existing/new widgets; smooth rounded corners/line fringes; doubled-size docking tested at five resolutions |
 | Sky source controls | Vanilla and Resource Pack stop Zenith sky/tint overrides; custom panorama submitted through ResourceManager; missing texture falls back |
 | Sky stability | Rotation matrix has zero translation at all tested angles. A 600×100 sky patch before/after moving 8 blocks horizontally and 6 vertically had mean absolute channel differences below 0.03/255, with drift disabled; minor differences are animated foreground lights |
+| Extra effects | All five new layers submitted geometry; zero strength and all individual toggles stopped extra submissions; Low/Balanced/High frame ceilings and disable cleanup passed. New geometry uses the existing depth-tested batches, with no added draw passes or persistent particle histories. |
 | Soft effects | Analytic antialiased ring shader and radial/star light sprites rendered without shader compilation failures; batched draw retains world depth tests |
 | Three themes | Zenith 2.0 native categories, optional Dashboard, upstream Catppuccin and stock Meteor all rendered; selection persisted and legacy Zenith name migrated |
 | Built-in Nora | 14 modules registered in this Meteor revision (Attribute Swap already exists in the base); all five commands registered; module settings retained Nora identity |
@@ -72,3 +73,7 @@ automatic identity/addon telemetry is omitted. See [source provenance](../third-
 ![Custom panorama test image loaded through ResourceManager](screenshots/custom-panorama.png)
 
 ![Native sky with Zenith effects kept active](screenshots/vanilla-sky.png)
+
+![Added curved explosion comets](screenshots/blast-comets.png)
+
+![Expanded death starburst](screenshots/death-starburst.png)

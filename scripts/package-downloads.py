@@ -34,6 +34,9 @@ Keys show press/release fills and expanding white rings, including short clicks.
 HUD widgets default to double size; each widget's Size multiplier adjusts it.
 Skybox > Sky source selects Zenith, Vanilla, Resource Pack or Custom Panorama.
 See docs/SKYBOXES.md in the source for custom panorama resource packs.
+Extra Effects adds impact crescents, blast comets, crystal energy funnels,
+death stars and pearl spirals, enabled by default with individual toggles.
+Extra effects strength changes their brightness; zero disables the extra layers.
 Soft glow size/strength adjust the smooth shader lights.
 Effect density and Quality control particle emission and performance.
 Zenith Addons contains the custom combat modules; Nora Tweaks has its own category.

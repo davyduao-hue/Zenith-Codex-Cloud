@@ -43,7 +43,10 @@ public final class SmokeAddon extends MeteorAddon {
     private boolean started, finished;
     private long attackBefore;
     private int explosionBefore;
+    private int blastCaptureTick=-1;
     private int skyBefore;
+    private final long[] extraBefore=new long[5];
+    private static final String[] EXTRA_TOGGLES={"impact-crescents","blast-comets","crystal-energy-streams","death-starburst","pearl-spirals"};
     private float rainBefore,thunderBefore;
     private boolean externalAddon,glazedAddon;
     private int oldWidth,oldHeight;
@@ -224,6 +227,7 @@ public final class SmokeAddon extends MeteorAddon {
                         require(Zenith.INSTANCE.frames.size()>0,"real world frames sampled");
                         for(Entity entity:mc.level.entitiesForRendering())if(entity instanceof Zombie&&mc.player.distanceTo(entity)<8){mc.gameMode.attack(mc.player,entity);break;}
                     }
+                    if(ticks==78)shot("29-impact-crescents");
                     if(ticks==90)shot("04-world-hud");
                     if(ticks==100){command("summon minecraft:ender_pearl ~ ~2 ~ {Motion:[0.05d,0.2d,0.15d]}");}
                     if(ticks>=110&&ticks<=116){mc.options.keyUp.setDown(true);mc.options.keyUse.setDown(true);meteordevelopment.meteorclient.utils.misc.input.Input.setButtonState(1,true);}
@@ -232,13 +236,19 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==117){mc.options.keyUp.setDown(false);mc.options.keyUse.setDown(false);meteordevelopment.meteorclient.utils.misc.input.Input.setButtonState(1,false);}
                     if(ticks==120){command("weather clear");command("tp @e[type=minecraft:zombie] ~20 ~ ~");command("fill ~-5 ~-4 ~-1 ~5 ~-1 ~9 minecraft:obsidian");mc.player.setXRot(18);command("summon minecraft:tnt ~ ~ ~4 {fuse:20}");}
                     if(ticks>=120&&ticks<=150){mc.level.setRainLevel(0);mc.level.setThunderLevel(0);}
-                    if(ticks==143)shot("06-explosion");
+                    if(ticks>=140&&ticks<160&&blastCaptureTick<0&&Modules.get().get(ZenithEffects.class).statistics().explosions()>0)blastCaptureTick=ticks+3;
+                    if(ticks==blastCaptureTick)shot("06-explosion");
+                    if(blastCaptureTick>0&&ticks==blastCaptureTick+5)shot("31-blast-comets");
                     if(ticks==160)command("summon minecraft:zombie ~2 ~ ~3 {NoAI:1b,PersistenceRequired:1b}");
                     if(ticks==163)command("kill @e[type=minecraft:zombie,distance=..16]");
                     if(ticks==165)shot("07-death");
+                    if(ticks==180)shot("30-death-starburst");
                     if(ticks==210){
                         require(Zenith.INSTANCE.memory.size()>0,"heap graph sampled");
                         ZenithEffects.Statistics stats=Modules.get().get(ZenithEffects.class).statistics();
+                        ZenithEffects fx=Modules.get().get(ZenithEffects.class);
+                        for(int i=0;i<5;i++)require(fx.extraRendered(i)>0,EXTRA_TOGGLES[i]+" submitted extra geometry");
+                        require(fx.extraPrimitiveCount()<=fx.extraPrimitiveLimit(),"Balanced extra geometry stays within shared frame allowance");
                         require(stats.hits()>0,"damage-confirmed hit effect spawned");
                         require(stats.explosions()>0,"server explosion effect spawned");
                         require(stats.replacedClouds()>0,"vanilla explosion cloud replaced with custom effect");
@@ -288,6 +298,7 @@ public final class SmokeAddon extends MeteorAddon {
                     ZenithEffects fx=Modules.get().get(ZenithEffects.class);
                     if(ticks==1) {
                         command("weather clear");command("time set 16000");command("fill ~-2 ~ ~15 ~2 ~12 ~19 minecraft:obsidian");
+                        command("summon minecraft:end_crystal ~2 ~1 ~4 {ShowBottom:0b}");
                         mc.player.setYRot(0);mc.player.setXRot(-18);
                         fx.settings.get("sky-style").parse("Nebula");fx.settings.get("sky-mood").parse("Purple");
                         fx.settings.get("starfield").parse("true");fx.settings.get("shooting-stars").parse("true");fx.settings.get("aurora-ribbons").parse("true");
@@ -307,9 +318,19 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==90){rainBefore=mc.level.getRainLevel(1);thunderBefore=mc.level.getThunderLevel(1);fx.settings.get("sky-mood").parse("RainySilver");fx.settings.get("cinematic-rain").parse("true");mc.player.setXRot(8);}
                     if(ticks==115){require(fx.statistics().rainFrames()>0,"cinematic rain streaks and surface ripples rendered");shot("12-cinematic-rain");fx.settings.get("cinematic-rain").parse("false");}
                     if(ticks==117)require(Math.abs(mc.level.getRainLevel(1)-rainBefore)<.02&&Math.abs(mc.level.getThunderLevel(1)-thunderBefore)<.02,"disabling cinematic rain restores previous local weather");
+                    if(ticks==125) {
+                        fx.settings.get("extra-effects-strength").parse("0");
+                        for(int i=0;i<5;i++)extraBefore[i]=fx.extraRendered(i);
+                    }
+                    if(ticks==130) {
+                        require(fx.extraPrimitiveCount()==0,"zero extra strength stops all additional geometry");
+                        for(int i=0;i<5;i++)require(fx.extraRendered(i)==extraBefore[i],EXTRA_TOGGLES[i]+" respects zero extra strength");
+                        fx.settings.get("extra-effects-strength").reset();
+                    }
                     if(ticks==135)for(int i=0;i<8;i++)command("summon minecraft:tnt ~"+(i%3-1)+" ~ ~8 {fuse:8}");
                     if(ticks==145)fx.quality.set(ZenithEffects.Quality.Low);
                     if(ticks==150) {
+                        require(fx.extraPrimitiveCount()>0&&fx.extraPrimitiveCount()<=fx.extraPrimitiveLimit(),"Low extra geometry obeys its frame allowance during overlapping blasts");
                         require(fx.statistics().sparks()<=256,"live quality downgrade trims particles to Low budget");
                         require(fx.statistics().skyVertices()==fx.budget().skyVertices(),"sky mesh resized to Low budget");
                         require(fx.statistics().skyStars()==128,"star density follows Low budget");
@@ -319,10 +340,17 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==160) {
                         require(fx.statistics().skyVertices()==fx.budget().skyVertices(),"sky mesh resized to High budget");
                         require(fx.statistics().sparks()<=1536,"High particle budget respected");
+                        require(fx.extraPrimitiveCount()<=fx.extraPrimitiveLimit(),"High extra geometry obeys its frame allowance");
+                        for(int i=0;i<5;i++){fx.settings.get(EXTRA_TOGGLES[i]).parse("false");extraBefore[i]=fx.extraRendered(i);}
                         fx.quality.set(ZenithEffects.Quality.Balanced);fx.animatedSky.set(false);skyBefore=fx.statistics().skyFrames();
                     }
+                    if(ticks==165) {
+                        require(fx.extraPrimitiveCount()==0,"extra effect toggles stop their geometry");
+                        for(int i=0;i<5;i++)require(fx.extraRendered(i)==extraBefore[i],EXTRA_TOGGLES[i]+" toggle stops submissions");
+                    }
+                    if(ticks==168)for(String toggle:EXTRA_TOGGLES)fx.settings.get(toggle).reset();
                     if(ticks==170){require(fx.statistics().skyFrames()==skyBefore,"skybox toggle stops custom sky rendering");fx.disable();}
-                    if(ticks==175){require(fx.statistics().sparks()==0&&fx.statistics().skyFrames()==0,"disabling effects clears particles and sky statistics");fx.enable();fx.animatedSky.set(true);}
+                    if(ticks==175){for(int i=0;i<5;i++)require(fx.extraRendered(i)==0,"disabling effects clears extra family "+i);require(fx.statistics().sparks()==0&&fx.statistics().skyFrames()==0,"disabling effects clears particles and sky statistics");fx.enable();fx.animatedSky.set(true);}
                     if(ticks==180){
                         require(fx.statistics().skyFrames()>0,"sky UBO and renderer recreate after module disable and re-enable");
                         fx.settings.get("visual-preset").parse("ReferenceSword");
