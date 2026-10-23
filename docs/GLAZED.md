@@ -2,7 +2,7 @@
 
 Use these files in the **same Minecraft 26.2 Fabric profile**:
 
-1. Zenith Client **2.0.5**.
+1. Zenith Client **2.0.7**.
 2. The author's official **`glazed-26.2-n-17.2.jar`** from
    [Glazed v17.2](https://github.com/realnnpg/glazed/releases/tag/v17.2).
 3. **Fabric API 0.161.0+26.2** from the official Fabric API distribution.

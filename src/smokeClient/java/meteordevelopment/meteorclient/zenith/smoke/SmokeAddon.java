@@ -238,7 +238,12 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks>=120&&ticks<=150){mc.level.setRainLevel(0);mc.level.setThunderLevel(0);}
                     if(ticks>=140&&ticks<160&&blastCaptureTick<0&&Modules.get().get(ZenithEffects.class).statistics().explosions()>0)blastCaptureTick=ticks+3;
                     if(ticks==blastCaptureTick)shot("06-explosion");
-                    if(blastCaptureTick>0&&ticks==blastCaptureTick+5)shot("31-blast-comets");
+                    if(blastCaptureTick>0&&ticks==blastCaptureTick+5) {
+                        var fx=Modules.get().get(ZenithEffects.class);
+                        require(fx.facetedLightCount()>0,"analytic faceted blast fragments submitted");
+                        require(fx.bloomLightCount()>0,"rotating energy blooms submitted during blast");
+                        shot("31-blast-comets");
+                    }
                     if(ticks==160)command("summon minecraft:zombie ~2 ~ ~3 {NoAI:1b,PersistenceRequired:1b}");
                     if(ticks==163)command("kill @e[type=minecraft:zombie,distance=..16]");
                     if(ticks==165)shot("07-death");
@@ -318,14 +323,16 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==90){rainBefore=mc.level.getRainLevel(1);thunderBefore=mc.level.getThunderLevel(1);fx.settings.get("sky-mood").parse("RainySilver");fx.settings.get("cinematic-rain").parse("true");mc.player.setXRot(8);}
                     if(ticks==115){require(fx.statistics().rainFrames()>0,"cinematic rain streaks and surface ripples rendered");shot("12-cinematic-rain");fx.settings.get("cinematic-rain").parse("false");}
                     if(ticks==117)require(Math.abs(mc.level.getRainLevel(1)-rainBefore)<.02&&Math.abs(mc.level.getThunderLevel(1)-thunderBefore)<.02,"disabling cinematic rain restores previous local weather");
+                    if(ticks==123){require(fx.bloomLightCount()>0,"crystal energy bloom remains animated");fx.settings.get("energy-blooms").parse("false");}
                     if(ticks==125) {
+                        require(fx.bloomLightCount()==0,"energy bloom toggle stops procedural spiral sprites");
                         fx.settings.get("extra-effects-strength").parse("0");
                         for(int i=0;i<5;i++)extraBefore[i]=fx.extraRendered(i);
                     }
                     if(ticks==130) {
                         require(fx.extraPrimitiveCount()==0,"zero extra strength stops all additional geometry");
                         for(int i=0;i<5;i++)require(fx.extraRendered(i)==extraBefore[i],EXTRA_TOGGLES[i]+" respects zero extra strength");
-                        fx.settings.get("extra-effects-strength").reset();
+                        fx.settings.get("extra-effects-strength").reset();fx.settings.get("energy-blooms").reset();
                     }
                     if(ticks==135)for(int i=0;i<8;i++)command("summon minecraft:tnt ~"+(i%3-1)+" ~ ~8 {fuse:8}");
                     if(ticks==145)fx.quality.set(ZenithEffects.Quality.Low);
@@ -378,7 +385,25 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==246){require(fx.statistics().skyFrames()==skyBefore,"missing custom panorama falls back without cancelling native sky");fx.skySource.set(ZenithEffects.SkySource.Zenith);fx.settings.get("sky-speed").parse("0");}
                     if(ticks==248){command("tp @s ~ ~ ~ 0 -35");}
                     if(ticks==254){shot("26-stable-sky-before");command("tp @s ~8 ~6 ~8 0 -35");}
-                    if(ticks==268){shot("27-stable-sky-after");fx.settings.get("sky-speed").reset();next();}
+                    if(ticks==268){shot("27-stable-sky-after");fx.settings.get("sky-speed").reset();}
+                    if(ticks==270) {
+                        fx.quality.set(ZenithEffects.Quality.High);fx.economyMode.set(true);explosionBefore=fx.statistics().explosions();
+                        command("tp @s ~ -60 ~ 0 18");
+                        command("summon minecraft:end_crystal ~2 ~1 ~4 {ShowBottom:0b}");
+                        for(int i=0;i<8;i++)command("summon minecraft:tnt ~"+(i%3-1)+" ~ ~8 {fuse:6}");
+                    }
+                    if(ticks==285) {
+                        require(fx.quality.get()==ZenithEffects.Quality.High,"Economy preserves selected High quality");
+                        require(fx.budget().particles()==96&&fx.statistics().sparks()>0&&fx.statistics().sparks()<=96&&fx.statistics().explosions()>explosionBefore,"Economy caps active particles at 96 during simultaneous blasts");
+                        require(fx.extraPrimitiveLimit()==64&&fx.extraPrimitiveCount()>0&&fx.extraPrimitiveCount()<=64,"Economy caps extra geometry at 64 primitives per frame");
+                        require(fx.statistics().skyVertices()==833,"Economy lowers sky mesh to 833 vertices");
+                        shot("32-economy-effects");fx.economyMode.set(false);
+                    }
+                    if(ticks==292) {
+                        require(fx.budget().particles()==1536,"disabling Economy restores High particle allowance");
+                        require(fx.statistics().skyVertices()==fx.budget().skyVertices(),"disabling Economy restores selected sky geometry");
+                        fx.quality.set(ZenithEffects.Quality.Balanced);next();
+                    }
                 }
                 case 8 -> {
                     if(ticks==1){mc.gui.setScreen(null);mc.player.setYRot(0);mc.player.setXRot(0);}

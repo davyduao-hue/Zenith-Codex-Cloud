@@ -1,7 +1,7 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.0.6** includes built-in Catppuccin and Nora Tweaks source,
+source. Version **2.0.7** includes built-in Catppuccin and Nora Tweaks source,
 a distinct purple Zenith theme with animated pill switches, a floating-star main menu, editable HUD,
 and red-dusk/silver-storm atmosphere and combat visuals based on the recordings.
 
@@ -18,12 +18,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.0.6+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.0.7+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.0.6+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.0.7+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -73,6 +73,9 @@ under `.minecraft/zenith-client`.
   and delayed shockwaves, rising crystal energy funnels, a death star shower and
   crown, and twin pearl spirals. All five layers default on and have independent
   toggles. **Extra effects strength** adjusts their brightness; zero disables them.
+  **Energy blooms** adds rotating crystal floor patterns, blast ripples and pearl
+  portals. Blast shards now have shaded facets and soft edges, and hit crescents
+  cross on independently rotated axes.
   The added ribbons and sprites share a per-frame ceiling of 128/384/704 for
   Low/Balanced/High, alongside the existing particle limits and terrain occlusion.
 - **Zenith Addons:** custom Crystal Aura and Kill Aura with menu-pause and optional
@@ -177,8 +180,17 @@ separate fragment shader with at most 3/4/5 cloud-noise octaves for Low/Balanced
 plus a bounded dome mesh and optional stars. Catppuccin GUI blur is separately
 configurable. Hardware FPS gains are not claimed.
 
+**Zenith Effects → Economy mode** is optional. It limits sparks to 96, active bursts
+to 8, tracked crystals/pearls to 8, trail length to 16, extra primitives to 64 per
+frame, and effect range to 24 blocks. It preserves your quality selection and
+restores it when switched off. Full visuals remain the default. Reused color
+buffers, cached circle geometry and skipped unused weather/entity work also apply
+with Economy off. This controls Zenith's work; it cannot enforce a universal 4%
+CPU, GPU or RAM limit for Minecraft.
+
 | Quality | Curve segments | Bursts | Sparks | Sky vertices | Stars |
 | --- | ---: | ---: | ---: | ---: | ---: |
+| Economy | 16 | 8 | 96 | 833 | 64 |
 | Low | 24 | 16 | 256 | 833 | 128 |
 | Balanced | 40 | 32 | 768 | 2,813 | 384 |
 | High | 64 | 48 | 1,536 | 4,773 | 768 |
@@ -215,11 +227,11 @@ module, settings editor and live event handlers. It checks sky geometry at all t
 quality levels, live quality changes, shooting
 stars, rain restoration, pearl arrival pulses and cleanup when disabled. Results
 and screenshots go to `build/smoke`; inspect `result.json` as well as the process
-exit code. The test addon is excluded from the distributable JAR. The 2.0.6 run with Glazed passed **162**
+exit code. The test addon is excluded from the distributable JAR. The 2.0.7 run with Glazed passed **172**
 checks, including the built-in addons, three themes, native library loading, actual
 short key taps, look-dot motion/recentering, silver rain, both reference sky presets,
 custom panoramas, sky-source switching and Glazed module settings in every theme.
-The standalone run passed **143** checks. New checks exercise all five additional
+The standalone run passed **153** checks. New checks exercise all five additional
 effect layers, strength/toggle controls, frame limits and cleanup.
 
 To include the external addon integration checks, build the example first and

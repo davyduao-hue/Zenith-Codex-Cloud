@@ -6,6 +6,29 @@ void main() {
     float shape=floor(v_TexCoord.x/2.0);
     vec2 p=vec2(v_TexCoord.x-shape*2.0,v_TexCoord.y)*2.0-1.0;
     float r2=dot(p,p);
+    if(shape>3.5) {
+        // A smooth three-arm spiral and a thin outer wave, evaluated on one quad.
+        float r=sqrt(r2);
+        float a=atan(p.y,p.x);
+        float wave=abs(sin(a*3.0-r*14.0));
+        float aa=max(fwidth(wave),0.025);
+        float arms=1.0-smoothstep(0.035,0.12+aa,wave);
+        float mask=smoothstep(0.08,0.25,r)*(1.0-smoothstep(0.7,0.98,r));
+        float ring=exp(-pow((r-0.82)/max(0.012,fwidth(r)),2.0));
+        float energy=arms*mask*0.48+ring*0.3;
+        fragColor=vec4(mix(v_Color.rgb,vec3(1.0),arms*0.3),v_Color.a*energy);
+        return;
+    }
+    if(shape>2.5) {
+        float d=abs(p.x)*0.55+abs(p.y)*1.35;
+        float aa=max(fwidth(d),0.01);
+        float facet=1.0-smoothstep(0.4-aa,0.4+aa,d);
+        float edge=exp(-pow((d-0.4)/max(0.035,aa),2.0));
+        float halo=exp(-d*5.5)*(1.0-smoothstep(0.75,1.0,max(abs(p.x),abs(p.y))));
+        vec3 rgb=mix(v_Color.rgb,vec3(1.0,0.98,0.95),edge*0.7+facet*0.25);
+        fragColor=vec4(rgb,v_Color.a*(facet*0.28+edge*0.45+halo*0.3));
+        return;
+    }
     if(shape>1.5) {
         float d=abs(sqrt(r2)-0.8333333);
         float aa=max(fwidth(sqrt(r2))*0.65,0.0015);

@@ -37,6 +37,9 @@ See docs/SKYBOXES.md in the source for custom panorama resource packs.
 Extra Effects adds impact crescents, blast comets, crystal energy funnels,
 death stars and pearl spirals, enabled by default with individual toggles.
 Extra effects strength changes their brightness; zero disables the extra layers.
+Energy blooms adds rotating crystal patterns, blast ripples and pearl portals.
+Economy mode limits effect counts and range while preserving your Quality setting.
+It is optional and does not enforce a system-wide CPU/GPU/RAM percentage cap.
 Soft glow size/strength adjust the smooth shader lights.
 Effect density and Quality control particle emission and performance.
 Zenith Addons contains the custom combat modules; Nora Tweaks has its own category.
