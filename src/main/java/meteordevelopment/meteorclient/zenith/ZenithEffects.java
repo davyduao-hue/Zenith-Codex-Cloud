@@ -111,6 +111,14 @@ public final class ZenithEffects extends Module {
     private final Setting<Boolean> deathStars=extra("death-starburst","Ascending star shower with a spreading crown of curved trails.");
     private final Setting<Boolean> pearlSpirals=extra("pearl-spirals","Twin spirals around flying pearls and a swirling arrival bloom.");
     private final Setting<Boolean> energyBlooms=extra("energy-blooms","Rotating crystal sigils, blast ripples, pearl portals and death crowns.");
+    private final Setting<Boolean> crystalComets=extra("crystal-comet-trails","Counter-rotating comet heads with fading inclined trails around crystals.");
+    private final Setting<Boolean> blastShower=extra("blast-spark-shower","Falling embers and small landing ripples after an explosion.");
+    private final Setting<Boolean> pearlBloom=extra("pearl-arrival-burst","Curved petal trails and faceted lights when a pearl arrives.");
+    private final Setting<Boolean> softenBlasts=extra("soften-overlapping-blasts","Reduce overlapping explosion glare while keeping a single blast at full brightness.");
+    private final long[] flourishRendered=new long[3];
+    public long flourishRendered(int layer){return flourishRendered[layer];}
+    private double burstOpacity=1,explosionOpacity=1;
+    public double explosionOpacity(){return explosionOpacity;}
     private int extraPrimitives;
     private final long[] extraRendered=new long[5];
     public int extraPrimitiveCount(){return extraPrimitives;}
@@ -234,7 +242,7 @@ public final class ZenithEffects extends Module {
     private void colorFor(int kind,int alpha) {
         if(palette.get()==Palette.ZenithPurple)tint.set(accent.get());
         else switch(kind){case 0->tint.set(255,226,207,255);case 1->tint.set(255,151,48,255);case 2->tint.set(204,223,255,255);default->tint.set(196,135,255,255);}
-        tint.a=Math.max(0,Math.min(255,alpha));
+        tint.a=Math.max(0,Math.min(255,(int)(alpha*burstOpacity)));
     }
 
     private Setting<Boolean> bool(String name, String description, boolean value) {
@@ -349,7 +357,7 @@ public final class ZenithEffects extends Module {
 
     @Override public void onDeactivate() { restoreRain(); clear(); }
     @EventHandler private void onLeave(GameLeftEvent event) { clear(); forcedRain = false; }
-    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;softLightCount=0;extraPrimitives=0;facetedLights=0;bloomLights=0;Arrays.fill(extraRendered,0);if(skybox!=null)skybox.clear(); }
+    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;softLightCount=0;extraPrimitives=0;facetedLights=0;bloomLights=0;Arrays.fill(extraRendered,0);Arrays.fill(flourishRendered,0);burstOpacity=explosionOpacity=1;if(skybox!=null)skybox.clear(); }
     private static int lifetime(int type){return type==2?44:type==1?26:type==0?10:18;}
 
     @EventHandler private void onHand(HeldItemRendererEvent event) {
@@ -377,7 +385,14 @@ public final class ZenithEffects extends Module {
         Renderer3D r=glowRenderer;r.begin();
         if(lightSprites==null)lightSprites=new meteordevelopment.meteorclient.renderer.MeshBuilder(MeteorRenderPipelines.ZENITH_SPRITE);
         lightSprites.begin();softLightCount=0;extraPrimitives=0;facetedLights=0;bloomLights=0;
-        for(Burst burst:bursts)if(mc.player.distanceToSqr(burst.pos)<=rangeSquared)renderBurst(r,burst,time,event.tickDelta,budget.segments());
+        int overlapping=0;
+        for(Burst burst:bursts)if(burst.type==1&&mc.player.distanceToSqr(burst.pos)<=rangeSquared)overlapping++;
+        explosionOpacity=softenBlasts.get()?1/Math.sqrt(Math.max(1,overlapping)):1;
+        for(Burst burst:bursts)if(mc.player.distanceToSqr(burst.pos)<=rangeSquared) {
+            burstOpacity=burst.type==1?explosionOpacity:1;
+            renderBurst(r,burst,time,event.tickDelta,budget.segments());
+        }
+        burstOpacity=1;
         for(Entity entity:tracked) {
             if(entity.isRemoved()||mc.player.distanceToSqr(entity)>rangeSquared)continue;
             Vec3 previous=entity.oldPosition(),position=entity.position();
@@ -412,7 +427,7 @@ public final class ZenithEffects extends Module {
             double fade=SkyPattern.fade(p.age+event.tickDelta,lifetime(p.kind)),dt=event.tickDelta;
             double x=p.px+(p.x-p.px)*dt,y=p.py+(p.y-p.py)*dt,z=p.pz+(p.z-p.pz)*dt;
             if(mc.player.distanceToSqr(x,y,z)>rangeSquared)continue;
-            colorFor(p.kind,(int)(230*fade));white.set(p.kind==1?255:230,243,p.kind==1?207:255,tint.a);
+            colorFor(p.kind,(int)(230*fade*(p.kind==1?explosionOpacity:1)));white.set(p.kind==1?255:230,243,p.kind==1?207:255,tint.a);
             if(p.kind==0)starFlash(r,x,y,z,(.05+.11*fade)*effectSize.get(),tint);
             else particle(r,x,y,z,(.035+.07*fade)*effectSize.get(),tint);
             if(particleTrails.get()) {
@@ -504,6 +519,10 @@ public final class ZenithEffects extends Module {
             halo(r,p.x,p.y+.2,p.z,.7*size,(int)(95*fade*fade),4,segments,false);
         }
         renderExtraBurst(r,burst,age,fade,size);
+        if(extraStrength.get()>0&&extraPrimitives<extraPrimitiveLimit()) {
+            if(burst.type==1&&blastShower.get())renderSparkShower(r,burst,age,fade,size);
+            else if(burst.type==3&&pearlBloom.get())renderArrivalBloom(r,burst,age,fade,size);
+        }
     }
 
     private void renderCrystal(Renderer3D r,double x,double baseY,double z,double time,int id,int segments) {
@@ -512,6 +531,7 @@ public final class ZenithEffects extends Module {
             energySpirals(r,x,baseY+.08,z,time*2.3+id,.93*size,1.7*size,effectiveQuality()==Quality.Low?2:3,2);
             if(energyBlooms.get())extraLight(2,1,x,baseY+.06,z,1.4*size,95,4,true,time*.38+id);
         }
+        if(crystalComets.get()&&extraStrength.get()>0)renderCrystalComets(r,x,y,z,time,id,size);
         halo(r,x,baseY+.025,z,1.2*size,75,1,segments,true);colorFor(1,170);
         ring(r,x,baseY+.04,z,.94*size,.024,tint,segments,false);
         ring(r,x,baseY+.045,z,.71*size,.014,tint,segments,false);
@@ -633,6 +653,64 @@ public final class ZenithEffects extends Module {
                 extraLight(4,4,px,py,pz,.18*size,210*fade,1,false);
             }
         }
+    }
+
+    /** New motion layers share the same primitive allowance as the existing extra effects. */
+    private void renderCrystalComets(Renderer3D r,double x,double y,double z,double time,int id,double size) {
+        int before=extraPrimitives,steps=effectiveQuality()==Quality.Low?6:12;
+        int count=effectiveQuality()==Quality.Low?1:2;
+        for(int strand=0;strand<count&&extraPrimitives<extraPrimitiveLimit();strand++) {
+            double tilt=strand==0?.8:-.65,heading=id*.31+time*.16;
+            double ct=Math.cos(tilt),st=Math.sin(tilt),ch=Math.cos(heading),sh=Math.sin(heading);
+            double px=0,py=0,pz=0;
+            for(int i=0;i<=steps;i++) {
+                double t=i/(double)steps,a=id+time*(strand==0?1.9:-1.5)-(1-t)*1.65;
+                double hx=Math.cos(a)*1.08*size,hz=Math.sin(a)*ct*1.08*size;
+                double nx=x+hx*ch-hz*sh,ny=y+Math.sin(a)*st*1.08*size,nz=z+hx*sh+hz*ch;
+                if(i>0)extraLine(r,2,1,px,py,pz,nx,ny,nz,(.007+t*.018)*size,175*t*t);
+                px=nx;py=ny;pz=nz;
+            }
+            extraLight(2,1,px,py,pz,.13*size,200,1,false);
+        }
+        flourishRendered[0]+=extraPrimitives-before;
+    }
+
+    private void renderSparkShower(Renderer3D r,Burst b,double age,double fade,double size) {
+        if(age<.23)return;
+        int before=extraPrimitives,count=effectiveQuality()==Quality.Low?6:effectiveQuality()==Quality.High?22:14;
+        Vec3 p=b.pos;
+        for(int i=0;i<count&&extraPrimitives<extraPrimitiveLimit();i++) {
+            double t=(age-.23-(i%4)*.035)/.665;
+            if(t<=0||t>=1)continue;
+            double a=b.phase+i*2.399963,reach=(.6+Math.sqrt((i+.5)/count)*2.4+t*.35)*size;
+            double height=2.4+Math.sin(i*4.7)*.65-4.1*t*t;
+            double x=p.x+Math.cos(a)*reach,z=p.z+Math.sin(a)*reach,y=p.y+Math.max(.065,height)*size;
+            double alpha=175*Math.sin(t*Math.PI)*Math.sqrt(fade);
+            if(height>.065) {
+                extraLine(r,1,1,x,y,z,x-Math.cos(a)*.05*size,y+(.08+t*.35)*size,z-Math.sin(a)*.05*size,.012*size,alpha*.65);
+                extraLight(1,1,x,y,z,(.065+(i%3)*.014)*size,alpha,1,false);
+            } else {
+                extraLight(1,1,x,y,z,(.10+(t-.7)*.6)*size*1.2,alpha*.5,2,true);
+            }
+        }
+        flourishRendered[1]+=extraPrimitives-before;
+    }
+
+    private void renderArrivalBloom(Renderer3D r,Burst b,double age,double fade,double size) {
+        int before=extraPrimitives,count=effectiveQuality()==Quality.Low?5:8,steps=effectiveQuality()==Quality.Low?3:5;
+        Vec3 p=b.pos;
+        for(int petal=0;petal<count&&extraPrimitives<extraPrimitiveLimit();petal++) {
+            double px=0,py=0,pz=0;
+            for(int i=0;i<=steps;i++) {
+                double t=Math.max(0,age-.22)+Math.min(.22,age)*i/steps;
+                double a=b.phase+petal*Math.TAU/count+t*1.25,reach=(.12+(1-Math.pow(1-t,3))*1.8)*size;
+                double nx=p.x+Math.cos(a)*reach,ny=p.y+(.15+Math.sin(t*Math.PI)*.8)*size,nz=p.z+Math.sin(a)*reach;
+                if(i>0)extraLine(r,4,4,px,py,pz,nx,ny,nz,.022*size,165*fade*i/steps);
+                px=nx;py=ny;pz=nz;
+            }
+            extraLight(4,4,px,py,pz,.17*size,190*fade,3,false,b.phase+petal+age*2);
+        }
+        flourishRendered[2]+=extraPrimitives-before;
     }
 
     private void filaments(Renderer3D r,Vec3 p,double seed,double time,double radius,double fade) {

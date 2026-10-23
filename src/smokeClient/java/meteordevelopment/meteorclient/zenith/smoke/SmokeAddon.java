@@ -46,6 +46,8 @@ public final class SmokeAddon extends MeteorAddon {
     private int blastCaptureTick=-1;
     private int skyBefore;
     private final long[] extraBefore=new long[5];
+    private final long[] flourishBefore=new long[3];
+    private static final String[] FLOURISH_TOGGLES={"crystal-comet-trails","blast-spark-shower","pearl-arrival-burst"};
     private static final String[] EXTRA_TOGGLES={"impact-crescents","blast-comets","crystal-energy-streams","death-starburst","pearl-spirals"};
     private float rainBefore,thunderBefore;
     private boolean externalAddon,glazedAddon;
@@ -228,7 +230,7 @@ public final class SmokeAddon extends MeteorAddon {
                         for(Entity entity:mc.level.entitiesForRendering())if(entity instanceof Zombie&&mc.player.distanceTo(entity)<8){mc.gameMode.attack(mc.player,entity);break;}
                     }
                     if(ticks==78)shot("29-impact-crescents");
-                    if(ticks==90)shot("04-world-hud");
+                    if(ticks==90){shot("04-world-hud");shot("33-crystal-comets");}
                     if(ticks==100){command("summon minecraft:ender_pearl ~ ~2 ~ {Motion:[0.05d,0.2d,0.15d]}");}
                     if(ticks>=110&&ticks<=116){mc.options.keyUp.setDown(true);mc.options.keyUse.setDown(true);meteordevelopment.meteorclient.utils.misc.input.Input.setButtonState(1,true);}
                     if(ticks>=110&&ticks<=114)MeteorClient.EVENT_BUS.post(meteordevelopment.meteorclient.events.meteor.MouseClickEvent.get(new MouseButtonEvent(0,0,new MouseButtonInfo(1,0)),meteordevelopment.meteorclient.utils.misc.input.KeyAction.Press));
@@ -244,6 +246,7 @@ public final class SmokeAddon extends MeteorAddon {
                         require(fx.bloomLightCount()>0,"rotating energy blooms submitted during blast");
                         shot("31-blast-comets");
                     }
+                    if(blastCaptureTick>0&&ticks==blastCaptureTick+11)shot("34-spark-shower");
                     if(ticks==160)command("summon minecraft:zombie ~2 ~ ~3 {NoAI:1b,PersistenceRequired:1b}");
                     if(ticks==163)command("kill @e[type=minecraft:zombie,distance=..16]");
                     if(ticks==165)shot("07-death");
@@ -253,6 +256,7 @@ public final class SmokeAddon extends MeteorAddon {
                         ZenithEffects.Statistics stats=Modules.get().get(ZenithEffects.class).statistics();
                         ZenithEffects fx=Modules.get().get(ZenithEffects.class);
                         for(int i=0;i<5;i++)require(fx.extraRendered(i)>0,EXTRA_TOGGLES[i]+" submitted extra geometry");
+                        for(int i=0;i<3;i++)require(fx.flourishRendered(i)>0,FLOURISH_TOGGLES[i]+" rendered in the test world");
                         require(fx.extraPrimitiveCount()<=fx.extraPrimitiveLimit(),"Balanced extra geometry stays within shared frame allowance");
                         require(stats.hits()>0,"damage-confirmed hit effect spawned");
                         require(stats.explosions()>0,"server explosion effect spawned");
@@ -328,10 +332,12 @@ public final class SmokeAddon extends MeteorAddon {
                         require(fx.bloomLightCount()==0,"energy bloom toggle stops procedural spiral sprites");
                         fx.settings.get("extra-effects-strength").parse("0");
                         for(int i=0;i<5;i++)extraBefore[i]=fx.extraRendered(i);
+                        for(int i=0;i<3;i++)flourishBefore[i]=fx.flourishRendered(i);
                     }
                     if(ticks==130) {
                         require(fx.extraPrimitiveCount()==0,"zero extra strength stops all additional geometry");
                         for(int i=0;i<5;i++)require(fx.extraRendered(i)==extraBefore[i],EXTRA_TOGGLES[i]+" respects zero extra strength");
+                        for(int i=0;i<3;i++)require(fx.flourishRendered(i)==flourishBefore[i],FLOURISH_TOGGLES[i]+" respects zero strength");
                         fx.settings.get("extra-effects-strength").reset();fx.settings.get("energy-blooms").reset();
                     }
                     if(ticks==135)for(int i=0;i<8;i++)command("summon minecraft:tnt ~"+(i%3-1)+" ~ ~8 {fuse:8}");
@@ -349,15 +355,17 @@ public final class SmokeAddon extends MeteorAddon {
                         require(fx.statistics().sparks()<=1536,"High particle budget respected");
                         require(fx.extraPrimitiveCount()<=fx.extraPrimitiveLimit(),"High extra geometry obeys its frame allowance");
                         for(int i=0;i<5;i++){fx.settings.get(EXTRA_TOGGLES[i]).parse("false");extraBefore[i]=fx.extraRendered(i);}
+                        for(int i=0;i<3;i++){fx.settings.get(FLOURISH_TOGGLES[i]).parse("false");flourishBefore[i]=fx.flourishRendered(i);}
                         fx.quality.set(ZenithEffects.Quality.Balanced);fx.animatedSky.set(false);skyBefore=fx.statistics().skyFrames();
                     }
                     if(ticks==165) {
                         require(fx.extraPrimitiveCount()==0,"extra effect toggles stop their geometry");
                         for(int i=0;i<5;i++)require(fx.extraRendered(i)==extraBefore[i],EXTRA_TOGGLES[i]+" toggle stops submissions");
+                        for(int i=0;i<3;i++)require(fx.flourishRendered(i)==flourishBefore[i],FLOURISH_TOGGLES[i]+" toggle stops submissions");
                     }
-                    if(ticks==168)for(String toggle:EXTRA_TOGGLES)fx.settings.get(toggle).reset();
+                    if(ticks==168){for(String toggle:EXTRA_TOGGLES)fx.settings.get(toggle).reset();for(String toggle:FLOURISH_TOGGLES)fx.settings.get(toggle).reset();}
                     if(ticks==170){require(fx.statistics().skyFrames()==skyBefore,"skybox toggle stops custom sky rendering");fx.disable();}
-                    if(ticks==175){for(int i=0;i<5;i++)require(fx.extraRendered(i)==0,"disabling effects clears extra family "+i);require(fx.statistics().sparks()==0&&fx.statistics().skyFrames()==0,"disabling effects clears particles and sky statistics");fx.enable();fx.animatedSky.set(true);}
+                    if(ticks==175){for(int i=0;i<3;i++)require(fx.flourishRendered(i)==0,"disabling clears flourish "+i);for(int i=0;i<5;i++)require(fx.extraRendered(i)==0,"disabling effects clears extra family "+i);require(fx.statistics().sparks()==0&&fx.statistics().skyFrames()==0,"disabling effects clears particles and sky statistics");fx.enable();fx.animatedSky.set(true);}
                     if(ticks==180){
                         require(fx.statistics().skyFrames()>0,"sky UBO and renderer recreate after module disable and re-enable");
                         fx.settings.get("visual-preset").parse("ReferenceSword");
@@ -397,11 +405,14 @@ public final class SmokeAddon extends MeteorAddon {
                         require(fx.budget().particles()==96&&fx.statistics().sparks()>0&&fx.statistics().sparks()<=96&&fx.statistics().explosions()>explosionBefore,"Economy caps active particles at 96 during simultaneous blasts");
                         require(fx.extraPrimitiveLimit()==64&&fx.extraPrimitiveCount()>0&&fx.extraPrimitiveCount()<=64,"Economy caps extra geometry at 64 primitives per frame");
                         require(fx.statistics().skyVertices()==833,"Economy lowers sky mesh to 833 vertices");
-                        shot("32-economy-effects");fx.economyMode.set(false);
+                        require(fx.explosionOpacity()>0&&fx.explosionOpacity()<1,"overlapping blasts reduce glare without hiding their geometry");
+                        shot("32-economy-effects");fx.economyMode.set(false);fx.settings.get("soften-overlapping-blasts").parse("false");
                     }
                     if(ticks==292) {
                         require(fx.budget().particles()==1536,"disabling Economy restores High particle allowance");
                         require(fx.statistics().skyVertices()==fx.budget().skyVertices(),"disabling Economy restores selected sky geometry");
+                        require(fx.explosionOpacity()==1,"overlap softening toggle restores full blast brightness");
+                        fx.settings.get("soften-overlapping-blasts").reset();
                         fx.quality.set(ZenithEffects.Quality.Balanced);next();
                     }
                 }

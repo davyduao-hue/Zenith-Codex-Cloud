@@ -38,6 +38,9 @@ Extra Effects adds impact crescents, blast comets, crystal energy funnels,
 death stars and pearl spirals, enabled by default with individual toggles.
 Extra effects strength changes their brightness; zero disables the extra layers.
 Energy blooms adds rotating crystal patterns, blast ripples and pearl portals.
+Crystal comet trails, Blast spark shower and Pearl arrival burst add three new
+motion layers. Each is enabled by default with its own Extra Effects toggle.
+Soften overlapping blasts reduces glare during simultaneous explosions.
 Economy mode limits effect counts and range while preserving your Quality setting.
 It is optional and does not enforce a system-wide CPU/GPU/RAM percentage cap.
 Soft glow size/strength adjust the smooth shader lights.

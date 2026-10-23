@@ -1,14 +1,14 @@
 # Validation — 2026-10-23
 
-Update **2.0.7**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
+Update **2.0.8**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 25.0.4.1, Gradle 9.6.1 and Fabric Loom 1.17.21.
 
 | Check | Result |
 | --- | --- |
 | Client build | `./gradlew build` passed |
 | Unit tests | 25 tests, zero failures/errors/skips: frame history, frame-rate-independent key fades, short taps, bounded click ripples, camera-angle wrapping/recentering, HUD docking, sky noise and quality budgets |
-| Graphical integration | 172 successful checks with Glazed 26.2-n-17.2, Fabric API 0.161.0+26.2 and the separate example addon; `build/smoke/result.json` reports `passed: true` |
-| Standalone integration | 153 checks passed with no Glazed or full Fabric API installed (separate example addon retained) |
+| Graphical integration | 186 successful checks with Glazed 26.2-n-17.2, Fabric API 0.161.0+26.2 and the separate example addon; `build/smoke/result.json` reports `passed: true` |
+| Standalone integration | 167 checks passed with no Glazed or full Fabric API installed (separate example addon retained) |
 | Mixin/shader initialization | No mixin audit/application errors or shader compilation failures in the final run |
 | Main menu | Zenith is recognized as a TitleScreen; native GUI eligibility, return from theme settings and actual world disconnect retain the custom menu |
 | Glazed compatibility | 80 external Glazed modules registered; all 240 settings screens opened across three themes; three external setting factories retained; Nora Deepslate and Zenith Aim Assist retained their separate class identities |
@@ -17,6 +17,8 @@ Update **2.0.7**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 | Sky source controls | Vanilla and Resource Pack stop Zenith sky/tint overrides; custom panorama submitted through ResourceManager; missing texture falls back |
 | Sky stability | Rotation matrix has zero translation at all tested angles; before/after movement screenshots captured with procedural drift disabled. |
 | Extra effects | All five new layers submitted geometry; zero strength and all individual toggles stopped extra submissions; Low/Balanced/High frame ceilings and disable cleanup passed. New geometry uses the existing depth-tested batches, with no added draw passes or persistent particle histories. |
+| New motion layers | Crystal comet trails, falling blast showers and pearl arrival petals rendered. Strength, toggle and cleanup checks cover each new layer; all share the existing primitive allowance. |
+| Overlapping blasts | Multiple simultaneous explosions reduce opacity; disabling softening restores full brightness. Geometry/particle limits remain enforced in Economy mode. |
 | Visual polish | Shader-shaded faceted fragments and rotating energy blooms submitted; bloom toggle checked; crossed slashes use independent axes and shard rotation varies per particle. |
 | Economy mode | Optional 96-spark / 8-burst / 64-extra-primitive budget, 833-vertex sky, 24-block range and shorter entity trails. Quality selection is retained and restored on exit. This is a workload limit, not a system-wide utilization cap. |
 | Render overhead | Scratch color buffers replace per-primitive Color allocations; dome circles and camera coordinates are reused; inactive weather/entity scans are skipped. No hardware utilization percentage claimed. |
@@ -82,3 +84,7 @@ automatic identity/addon telemetry is omitted. See [source provenance](../third-
 ![Expanded death starburst](screenshots/death-starburst.png)
 
 ![Economy mode in the integrated test world](screenshots/economy-effects.png)
+
+![Crystal comet trails](screenshots/crystal-comets.png)
+
+![Falling explosion spark shower](screenshots/spark-shower.png)
