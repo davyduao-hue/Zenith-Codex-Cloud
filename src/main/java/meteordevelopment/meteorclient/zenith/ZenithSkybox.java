@@ -35,10 +35,15 @@ public final class ZenithSkybox {
     private double cx,cy,cz;
     private int frames,meteorFrames,vertices,starCount;
     private SkyUniforms uniforms;
+    private final CachedSkyMesh domeCache=new CachedSkyMesh(),panoramaCache=new CachedSkyMesh();
+    private final meteordevelopment.meteorclient.renderer.MeshBuilder cachedBuilder=new meteordevelopment.meteorclient.renderer.MeshBuilder(MeteorRenderPipelines.ZENITH_SKY);
+    private int panoramaColumns,panoramaRows;
+    public int meshBuilds(){return domeCache.builds()+panoramaCache.builds();}
     public record Statistics(int frames,int vertices,int stars,int meteorFrames) {}
     public Statistics statistics(){return new Statistics(frames,vertices,starCount,meteorFrames);}
     public void clear(){
         frames=meteorFrames=vertices=starCount=0;lastTime=-100;
+        domeCache.close();panoramaCache.close();
         if (uniforms != null) { uniforms.close(); uniforms = null; }
     }
 
@@ -53,7 +58,8 @@ public final class ZenithSkybox {
     }
     private void renderDome(PoseStack matrices,VisualBudget budget,double time,Style style,int mood,double brightness,double density,boolean stars,boolean aurora,boolean meteors,boolean celestial) {
         cx=cy=cz=0;
-        if(columns!=budget.skyColumns()||rows!=budget.skyRows()) {
+        boolean topologyChanged=columns!=budget.skyColumns()||rows!=budget.skyRows();
+        if(topologyChanged) {
             columns=budget.skyColumns();rows=budget.skyRows();directions=new double[(columns+1)*(rows+1)][3];colors=new Color[directions.length];
             for(int row=0;row<=rows;row++)for(int col=0;col<=columns;col++) {
                 double angle=col*Math.TAU/columns,elevation=-.055+(Math.PI/2+.055)*row/rows;
@@ -62,29 +68,35 @@ public final class ZenithSkybox {
             }
             lastTime=-100;
         }
-        // Slow cloud drift needs only five color updates per second; ribbons/stars animate every frame.
-        if(Math.abs(time-lastTime)>.2||mood!=lastMood||style.ordinal()!=lastStyle||density!=lastDensity||brightness!=lastBrightness) {
+        // Reference skies animate entirely in the fragment shader. Other styles update
+        // their vertex tint at five Hz, while camera motion only changes the draw transform.
+        boolean reference=style==Style.ReferenceDusk||style==Style.ReferenceStorm;
+        boolean recolor=topologyChanged||!domeCache.ready()||style.ordinal()!=lastStyle
+            ||(!reference&&(Math.abs(time-lastTime)>.2||mood!=lastMood||density!=lastDensity));
+        if(recolor) {
             for(int i=0;i<directions.length;i++) {
                 if (style == Style.ReferenceDusk || style == Style.ReferenceStorm) colors[i].set(255,255,255,255);
                 else shade(colors[i],directions[i],time,style,mood,1,density);
             }
             lastTime=time;lastMood=mood;lastStyle=style.ordinal();lastDensity=density;lastBrightness=brightness;
         }
-        Renderer3D r=renderer;r.begin();
-        r.triangles.ensureCapacity(directions.length,columns*rows*6);
-        for(int i=0;i<directions.length;i++) {
-            double[] d=directions[i];r.triangles.vec3(cx+d[0]*RADIUS,cy+d[1]*RADIUS,cz+d[2]*RADIUS).color(colors[i]).next();
-        }
-        for(int row=0;row<rows;row++)for(int col=0;col<columns;col++) {
-            int a=row*(columns+1)+col,b=a+1,c=a+columns+2,d=a+columns+1;r.triangles.quad(a,b,c,d);
+        if(recolor) {
+            var mesh=cachedBuilder;mesh.begin();
+            mesh.ensureCapacity(directions.length,columns*rows*6);
+            for(int i=0;i<directions.length;i++) {
+                double[] d=directions[i];mesh.vec3(d[0]*RADIUS,d[1]*RADIUS,d[2]*RADIUS).color(colors[i]).next();
+            }
+            for(int row=0;row<rows;row++)for(int col=0;col<columns;col++) {
+                int a=row*(columns+1)+col;mesh.quad(a,a+1,a+columns+2,a+columns+1);
+            }
+            mesh.end();domeCache.upload(mesh,topologyChanged);
         }
         if (uniforms == null) uniforms = new SkyUniforms();
-        r.lines.end();
-        MeshRenderer.begin().attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_ATMOSPHERE)
-            .mesh(r.triangles,matrices).uniform("Projection",RenderSystem.getProjectionMatrixBuffer())
+        domeCache.bind(MeshRenderer.begin()).attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_ATMOSPHERE)
+            .transform(matrices).uniform("Projection",RenderSystem.getProjectionMatrixBuffer())
             .uniform("Atmosphere",uniforms.write(time,style.ordinal(),brightness,density,
                 budget.skyColumns() < 64 ? 3 : budget.skyColumns() < 120 ? 4 : 5)).end();
-        r.begin();
+        Renderer3D r=renderer;r.begin();
         if(aurora)aurora(r,time,style==Style.Aurora?1.0:.48,budget,mood);
         // The storm recording has no visible stars; the optional other styles retain the starfield.
         stars = stars && style != Style.ReferenceStorm;
@@ -130,20 +142,21 @@ public final class ZenithSkybox {
         boolean was3D=Utils.rendering3D;Utils.rendering3D=false;
         RenderSystem.getModelViewStack().pushMatrix().identity();
         try {
-            Renderer3D r=renderer;r.begin();
             int cols=budget.skyColumns(),rows=budget.skyRows();
-            r.triangles.ensureCapacity((cols+1)*(rows+1),cols*rows*6);
-            for(int row=0;row<=rows;row++)for(int col=0;col<=cols;col++) {
-                double[] d=direction(col*Math.TAU/cols,-Math.PI/2+Math.PI*row/rows);
-                r.triangles.vec3(d[0]*RADIUS,d[1]*RADIUS,d[2]*RADIUS).color(Color.WHITE).next();
+            if(!panoramaCache.ready()||panoramaColumns!=cols||panoramaRows!=rows) {
+                var mesh=cachedBuilder;mesh.begin();mesh.ensureCapacity((cols+1)*(rows+1),cols*rows*6);
+                for(int row=0;row<=rows;row++)for(int col=0;col<=cols;col++) {
+                    direction(pointA,col*Math.TAU/cols,-Math.PI/2+Math.PI*row/rows);
+                    mesh.vec3(pointA[0]*RADIUS,pointA[1]*RADIUS,pointA[2]*RADIUS).color(Color.WHITE).next();
+                }
+                for(int row=0;row<rows;row++)for(int col=0;col<cols;col++) {
+                    int a=row*(cols+1)+col;mesh.quad(a,a+1,a+cols+2,a+cols+1);
+                }
+                mesh.end();panoramaCache.upload(mesh,true);panoramaColumns=cols;panoramaRows=rows;
             }
-            for(int row=0;row<rows;row++)for(int col=0;col<cols;col++) {
-                int a=row*(cols+1)+col;r.triangles.quad(a,a+1,a+cols+2,a+cols+1);
-            }
-            r.lines.end();
             var rotation=SkyTransform.rotation(mc.gameRenderer.mainCamera().yRot(),mc.gameRenderer.mainCamera().xRot()).rotateY((float)Math.toRadians(heading));
-            MeshRenderer.begin().attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_PANORAMA)
-                .mesh(r.triangles,rotation).uniform("Projection",RenderSystem.getProjectionMatrixBuffer())
+            panoramaCache.bind(MeshRenderer.begin()).attachments(mc.gameRenderer.mainRenderTarget()).pipeline(MeteorRenderPipelines.ZENITH_PANORAMA)
+                .transform(rotation).uniform("Projection",RenderSystem.getProjectionMatrixBuffer())
                 .sampler("u_Texture",texture.getTextureView(),RenderSystem.getSamplerCache().getSampler(
                     com.mojang.blaze3d.textures.AddressMode.REPEAT,com.mojang.blaze3d.textures.AddressMode.CLAMP_TO_EDGE,
                     com.mojang.blaze3d.textures.FilterMode.LINEAR,com.mojang.blaze3d.textures.FilterMode.LINEAR,false)).end();

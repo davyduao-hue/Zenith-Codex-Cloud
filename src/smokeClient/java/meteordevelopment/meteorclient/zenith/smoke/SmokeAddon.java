@@ -45,6 +45,7 @@ public final class SmokeAddon extends MeteorAddon {
     private int explosionBefore;
     private int blastCaptureTick=-1;
     private int skyBefore;
+    private int perfFullLights,perfCulledLights,perfSkyBuilds,perfSkyFrames;
     private final long[] extraBefore=new long[5];
     private final long[] flourishBefore=new long[3];
     private static final String[] FLOURISH_TOGGLES={"crystal-comet-trails","blast-spark-shower","pearl-arrival-burst"};
@@ -453,6 +454,47 @@ public final class SmokeAddon extends MeteorAddon {
                     }
                 }
                 case 9 -> {
+                    var fx=Modules.get().get(ZenithEffects.class);
+                    if(ticks==1) {
+                        fx.disable();fx.enable();fx.settings.get("visual-preset").parse("ReferenceCrystal");
+                        fx.settings.get("ambient-motes").parse("false");fx.settings.get("rain-streaks").parse("false");
+                        fx.quality.set(ZenithEffects.Quality.Balanced);fx.offscreenCulling.set(false);
+                        command("kill @e[type=minecraft:end_crystal]");command("tp @s 100 -60 100 0 0");command("weather clear");
+                        for(int side:new int[]{-1,1})for(int i=0;i<8;i++)command("summon minecraft:end_crystal "+(97+(i%4)*2)+" -60 "+(100+side*(18+i/4*3))+" {ShowBottom:0b}");
+                    }
+                    if(ticks==40) {
+                        require(fx.visibleCrystals()==16,"performance fixture renders all 16 crystal effects with culling off");
+                        perfFullLights=fx.softLightCount();perfSkyBuilds=fx.skyMeshBuilds();perfSkyFrames=fx.statistics().skyFrames();
+                        fx.offscreenCulling.set(true);
+                    }
+                    if(ticks==50) {
+                        require(fx.visibleCrystals()==8&&fx.culledGroups()>=8,"camera culling skips eight rear crystals and retains eight front crystals");
+                        perfCulledLights=fx.softLightCount();
+                        require(perfCulledLights<perfFullLights,"culling reduces submitted glow geometry in the same scene");
+                        require(fx.skyMeshBuilds()==perfSkyBuilds&&fx.statistics().skyFrames()>perfSkyFrames,"animated reference sky reuses GPU geometry across rendered frames");
+                        shot("35-visibility-performance");mc.player.setYRot(180);
+                    }
+                    if(ticks==60) {
+                        require(fx.visibleCrystals()==8&&fx.culledGroups()>=8,"turning the camera reveals the opposite crystal group");
+                        fx.skySource.set(ZenithEffects.SkySource.CustomPanorama);fx.panoramaTexture.set("zenith-smoke:textures/sky/panorama.png");
+                    }
+                    if(ticks==70){perfSkyBuilds=fx.skyMeshBuilds();perfSkyFrames=fx.statistics().skyFrames();mc.player.setYRot(90);}
+                    if(ticks==80) {
+                        require(fx.skyMeshBuilds()==perfSkyBuilds&&fx.statistics().skyFrames()>perfSkyFrames,"camera rotation reuses custom panorama GPU buffers");
+                        fx.quality.set(ZenithEffects.Quality.High);
+                    }
+                    if(ticks==90) {
+                        require(fx.skyMeshBuilds()>perfSkyBuilds&&fx.statistics().skyVertices()==fx.budget().skyVertices(),"quality change rebuilds cached panorama with the correct topology");
+                        fx.disable();require(fx.skyMeshBuilds()==0,"disabling effects releases cached sky GPU buffers");fx.enable();
+                    }
+                    if(ticks==96) {
+                        require(fx.skyMeshBuilds()>0&&fx.statistics().skyFrames()>0,"cached sky recreates successfully after disable and re-enable");
+                        var metrics=java.util.Map.of("unculledCrystalEffects",16,"culledCrystalEffects",8,"unculledGlowSprites",perfFullLights,"culledGlowSprites",perfCulledLights,"stableSkyRebuilds",0);
+                        Files.writeString(results.resolve("performance.json"),new com.google.gson.Gson().toJson(metrics));
+                        System.out.println("ZENITH_SMOKE PERFORMANCE: "+metrics);next();
+                    }
+                }
+                case 10 -> {
                     if(ticks==1){mc.disconnectFromWorld(net.minecraft.network.chat.Component.literal("Zenith smoke completed"));}
                     if(ticks==40) {
                         require(mc.gui.screen() instanceof ZenithMenuScreen,"disconnect returns to Zenith main menu after all themes and addons");

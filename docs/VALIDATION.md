@@ -1,14 +1,14 @@
-# Validation — 2026-10-23
+# Validation — 2026-10-24
 
-Update **2.0.8**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
+Update **2.0.9**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 25.0.4.1, Gradle 9.6.1 and Fabric Loom 1.17.21.
 
 | Check | Result |
 | --- | --- |
 | Client build | `./gradlew build` passed |
-| Unit tests | 25 tests, zero failures/errors/skips: frame history, frame-rate-independent key fades, short taps, bounded click ripples, camera-angle wrapping/recentering, HUD docking, sky noise and quality budgets |
-| Graphical integration | 186 successful checks with Glazed 26.2-n-17.2, Fabric API 0.161.0+26.2 and the separate example addon; `build/smoke/result.json` reports `passed: true` |
-| Standalone integration | 167 checks passed with no Glazed or full Fabric API installed (separate example addon retained) |
+| Unit tests | 31 tests, zero failures/errors/skips: camera-frustum edge/rotation/large-coordinate tests, frame history, frame-rate-independent key fades, short taps, bounded click ripples, camera-angle wrapping/recentering, HUD docking, sky noise and quality budgets |
+| Graphical integration | 195 successful checks with Glazed 26.2-n-17.2, Fabric API 0.161.0+26.2 and the separate example addon; `build/smoke/result.json` reports `passed: true` |
+| Standalone integration | 176 checks passed with no Glazed or full Fabric API installed (separate example addon retained) |
 | Mixin/shader initialization | No mixin audit/application errors or shader compilation failures in the final run |
 | Main menu | Zenith is recognized as a TitleScreen; native GUI eligibility, return from theme settings and actual world disconnect retain the custom menu |
 | Glazed compatibility | 80 external Glazed modules registered; all 240 settings screens opened across three themes; three external setting factories retained; Nora Deepslate and Zenith Aim Assist retained their separate class identities |
@@ -21,6 +21,8 @@ Update **2.0.8**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 | Overlapping blasts | Multiple simultaneous explosions reduce opacity; disabling softening restores full brightness. Geometry/particle limits remain enforced in Economy mode. |
 | Visual polish | Shader-shaded faceted fragments and rotating energy blooms submitted; bloom toggle checked; crossed slashes use independent axes and shard rotation varies per particle. |
 | Economy mode | Optional 96-spark / 8-burst / 64-extra-primitive budget, 833-vertex sky, 24-block range and shorter entity trails. Quality selection is retained and restored on exit. This is a workload limit, not a system-wide utilization cap. |
+| Visibility optimization | In-game comparison checks visible crystal groups and sprite submissions with culling off/on, then turns the camera to reveal the opposite group. Unit tests retain edge-overlapping glows and camera-containing effects. |
+| Cached sky geometry | Reference sky and custom panorama reuse GPU buffers across frames/camera rotation; quality changes rebuild topology; disable frees buffers and re-enable recreates them. |
 | Render overhead | Scratch color buffers replace per-primitive Color allocations; dome circles and camera coordinates are reused; inactive weather/entity scans are skipped. No hardware utilization percentage claimed. |
 | Soft effects | Analytic antialiased ring shader and radial/star light sprites rendered without shader compilation failures; batched draw retains world depth tests |
 | Three themes | Zenith 2.0 native categories, optional Dashboard, upstream Catppuccin and stock Meteor all rendered; selection persisted and legacy Zenith name migrated |
@@ -37,6 +39,15 @@ Update **2.0.8**. Target: Minecraft 26.2, Fabric Loader 0.19.3, Temurin JDK
 | Silver rain | Cinematic rain replaced blue rain columns, drew white streaks/surface rings and restored previous local weather when disabled |
 | Zenith combat modules | Local Kill Aura attack, Crystal Aura break, duplicate-engine exclusion and menu pause/resume passed |
 | Packaging | Metadata, entrypoints, all listed mixins, Java bytecode target, addon/effect classes, shader resources, licenses and 14 nested JARs verified; smoke/example addon code excluded |
+
+The controlled visibility scene places eight crystals ahead of the camera and
+eight behind, using Balanced quality. Both runs recorded **16 → 8** rendered
+crystal effect groups and **131 → 83** submitted glow sprites when culling was
+enabled. Turning the camera revealed the other eight crystals. The reference sky
+and custom panorama continued rendering with **zero geometry rebuilds** across
+the stable-settings measurement intervals, including panorama camera rotation.
+Changing quality rebuilt the panorama, and disable/re-enable released/recreated
+the caches. `build/smoke/performance.json` records these render-work counts.
 
 The graphical run uses Xvfb and Mesa llvmpipe software OpenGL. It establishes
 startup and exercised rendering/input behavior, not a hardware FPS improvement or
@@ -88,3 +99,5 @@ automatic identity/addon telemetry is omitted. See [source provenance](../third-
 ![Crystal comet trails](screenshots/crystal-comets.png)
 
 ![Falling explosion spark shower](screenshots/spark-shower.png)
+
+![Visibility test: front crystal effects remain visible while the rear group is culled](screenshots/visibility-performance.png)

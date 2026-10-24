@@ -41,6 +41,8 @@ Energy blooms adds rotating crystal patterns, blast ripples and pearl portals.
 Crystal comet trails, Blast spark shower and Pearl arrival burst add three new
 motion layers. Each is enabled by default with its own Extra Effects toggle.
 Soften overlapping blasts reduces glare during simultaneous explosions.
+Offscreen culling is enabled by default, skipping geometry outside the camera view.
+Sky and panorama geometry is cached on the GPU instead of uploaded each frame.
 Economy mode limits effect counts and range while preserving your Quality setting.
 It is optional and does not enforce a system-wide CPU/GPU/RAM percentage cap.
 Soft glow size/strength adjust the smooth shader lights.

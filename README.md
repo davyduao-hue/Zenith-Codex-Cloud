@@ -1,7 +1,7 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.0.8** includes built-in Catppuccin and Nora Tweaks source,
+source. Version **2.0.9** includes built-in Catppuccin and Nora Tweaks source,
 a distinct purple Zenith theme with animated pill switches, a floating-star main menu, editable HUD,
 and red-dusk/silver-storm atmosphere and combat visuals based on the recordings.
 
@@ -18,12 +18,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.0.8+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.0.9+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.0.8+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.0.9+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -176,6 +176,22 @@ rather than a different Meteor release. The example is not bundled into Zenith.
 
 ## Performance
 
+**Offscreen culling** is enabled by default in Zenith Effects. It skips complete
+crystal/burst groups and particle/trail work outside the camera view. Expanded
+bounds preserve visible glow and trail edges, including with camera rotation.
+The toggle is available if a custom camera or shader integration needs it.
+
+Sky and custom-panorama meshes now stay in GPU buffers: camera movement changes
+the transform, and animated reference skies update shader uniforms without
+rebuilding the mesh. Other sky styles refresh vertex tint at five Hz. Quality
+changes rebuild the required buffers; disabling the module releases them.
+
+In the integrated test scene (eight crystals ahead and eight behind), culling
+reduced rendered crystal effect groups from **16 to 8** and glow sprites from
+**131 to 83**. The animated reference sky and rotating custom panorama required
+**zero geometry rebuilds** while their settings stayed unchanged. These are
+render-work measurements, not CPU/GPU utilization or hardware FPS measurements.
+
 Balanced is the default. Effects use bounded storage and batched additive geometry
 with world depth tests. Soft particle halos use one quad each with per-fragment Gaussian falloff and star
 rays, batched into one extra depth-tested draw. **Soft glow size/strength** control
@@ -220,7 +236,7 @@ gradlew.bat runSmokeClient -PzenithSmoke
 ```
 
 Linux equivalents use `./gradlew`. `build` compiles the client and runs
-**25** frame-history, input-animation, look-motion/docking, sky-noise and visual-budget tests. The optional graphical smoke run needs a display and uses
+**31** camera-frustum, frame-history, input-animation, look-motion/docking, sky-noise and visual-budget tests. The optional graphical smoke run needs a display and uses
 its own ignored `run-smoke` directory. It checks module registration, the menu,
 GUI and HUD editor, then creates a uniquely named local flat world to exercise
 HUD sampling, totems, potions, pearls, explosions and death rendering, plus custom
@@ -231,12 +247,15 @@ module, settings editor and live event handlers. It checks sky geometry at all t
 quality levels, live quality changes, shooting
 stars, rain restoration, pearl arrival pulses and cleanup when disabled. Results
 and screenshots go to `build/smoke`; inspect `result.json` as well as the process
-exit code. The test addon is excluded from the distributable JAR. The 2.0.8 run with Glazed passed **186**
+exit code. The test addon is excluded from the distributable JAR. The 2.0.9 run with Glazed passed **195**
 checks, including the built-in addons, three themes, native library loading, actual
 short key taps, look-dot motion/recentering, silver rain, both reference sky presets,
 custom panoramas, sky-source switching and Glazed module settings in every theme.
-The standalone run passed **167** checks. New checks exercise all five additional
-effect layers, strength/toggle controls, frame limits and cleanup.
+The standalone run passed **176** checks. Checks exercise the additional
+effect layers, strength/toggle controls, frame limits and cleanup. Performance
+checks compare culling off/on, turn the camera, verify cached sky/panorama reuse,
+change quality and disable/re-enable the effects. Render-work measurements are
+written to `build/smoke/performance.json`.
 
 To include the external addon integration checks, build the example first and
 copy its JAR into `run-smoke/mods/` before running the smoke command. See the current

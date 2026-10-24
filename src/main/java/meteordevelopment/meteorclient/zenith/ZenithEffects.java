@@ -45,6 +45,18 @@ public final class ZenithEffects extends Module {
         .defaultValue(VisualPreset.ReferenceCrystal).onChanged(this::applyPreset).build());
     public final Setting<Quality> quality = general.add(new EnumSetting.Builder<Quality>().name("quality")
         .description("Controls ring segments, particle count and active-effect budgets.").defaultValue(Quality.Balanced).build());
+    public final Setting<Boolean> offscreenCulling=general.add(new BoolSetting.Builder().name("offscreen-culling")
+        .description("Skip effects outside the camera view; generous bounds keep glows and trails visible at the edges.")
+        .defaultValue(true).build());
+    private final EffectVisibility visibility=new EffectVisibility();
+    private int culledGroups,visibleCrystals;
+    public int culledGroups(){return culledGroups;}
+    public int visibleCrystals(){return visibleCrystals;}
+    public int skyMeshBuilds(){return skybox==null?0:skybox.meshBuilds();}
+    private boolean visible(double x,double y,double z,double radius) {
+        if(!offscreenCulling.get()||visibility.visible(x,y,z,radius))return true;
+        culledGroups++;return false;
+    }
     public final Setting<Boolean> economyMode=general.add(new BoolSetting.Builder().name("economy-mode")
         .description("Smaller effect, sky and entity budgets. Preserves your quality selection; does not cap system CPU/GPU usage.")
         .defaultValue(false).build());
@@ -357,7 +369,7 @@ public final class ZenithEffects extends Module {
 
     @Override public void onDeactivate() { restoreRain(); clear(); }
     @EventHandler private void onLeave(GameLeftEvent event) { clear(); forcedRain = false; }
-    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;softLightCount=0;extraPrimitives=0;facetedLights=0;bloomLights=0;Arrays.fill(extraRendered,0);Arrays.fill(flourishRendered,0);burstOpacity=explosionOpacity=1;if(skybox!=null)skybox.clear(); }
+    private void clear() { bursts.clear(); sparks.clear(); tracked.clear(); trails.clear();trailSeen.clear(); hitBursts=explosionBursts=deathBursts=pearlSamples=crystalFrames=replacedClouds=lightningFrames=rainFrames=trailImpacts=nativeRainReplacements=0;softLightCount=0;extraPrimitives=0;facetedLights=0;bloomLights=0;culledGroups=visibleCrystals=0;Arrays.fill(extraRendered,0);Arrays.fill(flourishRendered,0);burstOpacity=explosionOpacity=1;if(skybox!=null)skybox.clear(); }
     private static int lifetime(int type){return type==2?44:type==1?26:type==0?10:18;}
 
     @EventHandler private void onHand(HeldItemRendererEvent event) {
@@ -375,6 +387,9 @@ public final class ZenithEffects extends Module {
         if (mc.player == null || mc.level == null) return;
         Vec3 renderCamera=mc.gameRenderer.mainCamera().position();
         renderCameraX=renderCamera.x;renderCameraY=renderCamera.y;renderCameraZ=renderCamera.z;
+        visibility.update(meteordevelopment.meteorclient.utils.render.RenderUtils.projection,
+            com.mojang.blaze3d.systems.RenderSystem.getModelViewStack(),event.matrices.last().pose(),renderCameraX,renderCameraY,renderCameraZ);
+        culledGroups=visibleCrystals=0;
         double rangeSquared=(double)effectRange()*effectRange();
         double time=(tick+event.tickDelta)/20.0;
         double yaw=Math.toRadians(mc.gameRenderer.mainCamera().yRot()),pitch=Math.toRadians(mc.gameRenderer.mainCamera().xRot());
@@ -389,6 +404,8 @@ public final class ZenithEffects extends Module {
         for(Burst burst:bursts)if(burst.type==1&&mc.player.distanceToSqr(burst.pos)<=rangeSquared)overlapping++;
         explosionOpacity=softenBlasts.get()?1/Math.sqrt(Math.max(1,overlapping)):1;
         for(Burst burst:bursts)if(mc.player.distanceToSqr(burst.pos)<=rangeSquared) {
+            double bound=(burst.type==0?4:burst.type==1?Math.max(7,6*glowSpread.get()):7)*effectSize.get();
+            if(!visible(burst.pos.x,burst.pos.y+(burst.type==2?2:0),burst.pos.z,bound))continue;
             burstOpacity=burst.type==1?explosionOpacity:1;
             renderBurst(r,burst,time,event.tickDelta,budget.segments());
         }
@@ -397,7 +414,8 @@ public final class ZenithEffects extends Module {
             if(entity.isRemoved()||mc.player.distanceToSqr(entity)>rangeSquared)continue;
             Vec3 previous=entity.oldPosition(),position=entity.position();
             double x=previous.x+(position.x-previous.x)*event.tickDelta,y=previous.y+(position.y-previous.y)*event.tickDelta,z=previous.z+(position.z-previous.z)*event.tickDelta;
-            if(entity instanceof EndCrystal&&crystals.get())renderCrystal(r,x,y,z,time,entity.getId(),budget.segments());
+            if(!visible(x,y+1,z,3*effectSize.get()*Math.max(1,glowSpread.get())))continue;
+            if(entity instanceof EndCrystal&&crystals.get()){visibleCrystals++;renderCrystal(r,x,y,z,time,entity.getId(),budget.segments());}
             else if(entity instanceof ThrownEnderpearl&&pearls.get()) {
                 colorFor(4,210);ring(r,x,y,z,.16,.012,tint,24,true);halo(r,x,y,z,.36,85,4,16,false);
                 halo(r,x,y,z,.09,220,4,12,false);
@@ -411,6 +429,8 @@ public final class ZenithEffects extends Module {
             for(Vec3 point:trail) {
                 double t=++i/(double)trail.size();colorFor(4,(int)(205*t*fade));
                 if(previous!=null) {
+                    double radius=previous.distanceTo(point)*.5+.7;
+                    if(!visible((previous.x+point.x)*.5,(previous.y+point.y)*.5,(previous.z+point.z)*.5,radius)){previous=point;continue;}
                     soft.set(tint);soft.a/=4;ribbon(r,previous.x,previous.y,previous.z,point.x,point.y,point.z,.085*t,soft,false);
                     white.set(255,246,255,(int)(225*t*fade));
                     ribbon(r,previous.x,previous.y,previous.z,point.x,point.y,point.z,.016*t,white,false);
@@ -426,7 +446,7 @@ public final class ZenithEffects extends Module {
         for(Spark p:sparks) {
             double fade=SkyPattern.fade(p.age+event.tickDelta,lifetime(p.kind)),dt=event.tickDelta;
             double x=p.px+(p.x-p.px)*dt,y=p.py+(p.y-p.py)*dt,z=p.pz+(p.z-p.pz)*dt;
-            if(mc.player.distanceToSqr(x,y,z)>rangeSquared)continue;
+            if(mc.player.distanceToSqr(x,y,z)>rangeSquared||!visible(x,y,z,2*effectSize.get()*Math.max(1,glowSpread.get())))continue;
             colorFor(p.kind,(int)(230*fade*(p.kind==1?explosionOpacity:1)));white.set(p.kind==1?255:230,243,p.kind==1?207:255,tint.a);
             if(p.kind==0)starFlash(r,x,y,z,(.05+.11*fade)*effectSize.get(),tint);
             else particle(r,x,y,z,(.035+.07*fade)*effectSize.get(),tint);
@@ -730,6 +750,7 @@ public final class ZenithEffects extends Module {
         if(ambientMotes.get())for(int i=0;i<budget.motes();i++) {
             double x=event.offsetX+Math.sin(i*17.31)*7+Math.sin(time*.2+i)*.4,z=event.offsetZ+Math.cos(i*9.72)*7;
             double y=event.offsetY-1+(time*.15+i*.618)%4.5;
+            if(!visible(x,y,z,.5*glowSpread.get()))continue;
             int kind=palette.get()==Palette.ZenithPurple?4:1;
             double pulse=.65+.35*Math.sin(time*.9+i),radius=.10+(i%5)*.025;
             halo(r,x,y,z,radius,(int)(45*pulse),kind,12,false);
@@ -741,11 +762,12 @@ public final class ZenithEffects extends Module {
             for(int i=0;i<budget.motes()*4;i++) {
                 double x=event.offsetX+Math.sin(i*12.92)*8,z=event.offsetZ+Math.cos(i*7.32)*8;
                 double y=event.offsetY+5-((time*1.3+i*.618)%1)*11;
+                if(!visible(x,y-.475,z,1.1))continue;
                 tint.set(224,231,240,(int)(105*amount));ribbon(r,x,y,z,x-.06,y-.95,z+.025,.008,tint,true);
             }
             for(int i=0;i<rainRippleCount;i++) {
                 double phase=(time*.8+i*.618)%1;tint.set(192,211,255,(int)(50*amount*(1-phase)));
-                double[] p=rainGround[i];ring(r,p[0],p[1],p[2],.05+phase*.4,.008,tint,16,false);
+                double[] p=rainGround[i];if(!visible(p[0],p[1],p[2],.5))continue;ring(r,p[0],p[1],p[2],.05+phase*.4,.008,tint,16,false);
             }
             rainFrames++;
         }
