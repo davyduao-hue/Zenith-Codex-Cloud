@@ -276,7 +276,7 @@ val sourceDistribution = tasks.register<Zip>("sourceDistribution") {
     into("Zenith-Client-2.0") {
         from("src") { into("src") }
         from("gradle") { into("gradle") }
-        from("scripts") { into("scripts") }
+        from("scripts") { into("scripts"); exclude("**/__pycache__/**", "**/*.pyc") }
         from("docs") { into("docs") }
         from("third-party") { into("third-party") }
         from("examples") { into("examples"); exclude("**/build/**", "**/.gradle/**") }

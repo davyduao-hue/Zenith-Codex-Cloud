@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+addon_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec sh "$addon_dir/../../gradlew" -p "$addon_dir" "$@"

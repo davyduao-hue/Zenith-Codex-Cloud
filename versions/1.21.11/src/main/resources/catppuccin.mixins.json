@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "package": "me.pindour.catppuccin.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MinecraftRenderFrameMixin",
+    "RenderSystemMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "meteorclient.ColorSettingMixin",
+    "meteorclient.FontsMixin",
+    "meteorclient.GuiRendererAccessor",
+    "meteorclient.GuiRendererMixin",
+    "meteorclient.MeteorWidgetMixin",
+    "meteorclient.SettingAccessor",
+    "meteorclient.SettingMixin",
+    "meteorclient.TabMixin",
+    "meteorclient.WBrightnessQuadMixin",
+    "meteorclient.WContainerMixin",
+    "meteorclient.WDropdownMixin",
+    "meteorclient.WHeaderMixin",
+    "meteorclient.WHueQuadMixin",
+    "meteorclient.WSliderAccessor",
+    "meteorclient.WSliderMixin",
+    "meteorclient.WTextBoxMixin",
+    "meteorclient.WViewMixin",
+    "meteorclient.WWidgetMixin"
+  ]
+}

@@ -163,10 +163,10 @@ public abstract class GuiRendererMixin {
 
     @Unique
     private CatppuccinRenderer renderer() {
-        if (CatppuccinRenderer.guiRenderer == null)
-            CatppuccinRenderer.guiRenderer = (GuiRenderer) (Object) this;
-
-        return CatppuccinRenderer.get();
+        CatppuccinRenderer.guiRenderer = (GuiRenderer) (Object) this;
+        CatppuccinRenderer renderer = CatppuccinRenderer.get();
+        renderer.setTheme((CatppuccinGuiTheme) theme);
+        return renderer;
     }
 
     @Unique

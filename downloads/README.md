@@ -1,25 +1,32 @@
 # Download Zenith Client 2.0
 
-Current update: **2.0.5 for Minecraft 26.2** — Glazed compatibility fixes,
-larger HUD, distinct animated purple controls, smooth shader glows, selectable sky
-sources and camera-stable custom panoramas. Glazed remains a separate addon.
+Current update: **2.1.0** — separate Minecraft **1.21.11** and **26.2** builds,
+ten optional visual modules, configurable GUI animations, purple themes, HUD,
+procedural effects and selectable skyboxes. Glazed remains a separate addon.
 
-- [Client JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-MC26.2.jar)
-- [Buildable source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-Source.zip)
-- [Client and source bundle](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/heads/main/downloads/Zenith-Client-2.0-Download.zip)
+| Minecraft | Installable JAR | Buildable source | Client + source bundle |
+| --- | --- | --- | --- |
+| 1.21.11 | [Download JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-MC1.21.11.jar) | [Source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Source-MC1.21.11.zip) | [Bundle](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Download-MC1.21.11.zip) |
+| 26.2 | [Download JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-MC26.2.jar) | [Source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Source.zip) | [Bundle](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Download.zip) |
 
-Requires Minecraft 26.2, Fabric Loader 0.19.3+ and Java 25. Put the client JAR in your Fabric profile's mods folder, replacing any separate Meteor Client JAR. Right Shift opens settings. The source ZIP includes GPL-3.0 licensing and full build instructions.
+Use **Java 25** for both versions. Use Fabric Loader **0.18.2+ for 1.21.11** or
+**0.19.3+ for 26.2**. Put the matching client JAR in your Fabric profile's `mods`
+folder, replacing previous Zenith/Meteor. Remove separate Catppuccin and Nora
+Tweaks JARs. Keep the two Minecraft versions in separate launcher profiles.
 
-Checksums are in [SHA256SUMS](SHA256SUMS). To reproduce these downloads from
-source, run the build, `python scripts/verify-artifact.py`, then
-`python scripts/package-downloads.py`.
+Right Shift opens settings. **GUI → Theme** chooses Zenith 2.0, Catppuccin or
+Meteor. **Zenith Addons** contains the [ten new optional modules](../docs/NEW-MODULES.md).
+**Zenith Effects → Skybox → Sky source** selects Zenith, Vanilla, Resource Pack
+or Custom Panorama. HUD widgets have their own size controls.
 
-Select **Right Shift → GUI → Theme** for Zenith 2.0, Catppuccin or Meteor.
-Remove separate Catppuccin and Nora Tweaks JARs. Under **Zenith Effects**, choose
-**Visual preset → Reference Crystal / Reference Sword** to apply the new look.
-A buildable addon example is included under `examples/meteor-addon`.
+Glazed requires its version-matched JAR and full Fabric API; see the
+[compatibility instructions](../docs/GLAZED.md). It is excluded from these downloads.
 
-For Glazed, install its official **26.2-n-17.2** JAR plus **Fabric API 0.161.0+26.2**.
-Download it from [Glazed's author](https://github.com/realnnpg/glazed/releases/tag/v17.2).
-HUD widgets have a **Size multiplier**; **Zenith Effects → Skybox → Sky source**
-selects Zenith, Vanilla, Resource Pack or Custom Panorama.
+Extract the source ZIP, open Command Prompt in its project folder, and run
+`gradlew.bat build` with JDK 25 on PATH. Each source includes licenses and a separate
+addon example. Checksums are in [SHA256SUMS](SHA256SUMS).
+
+To reproduce repository downloads, build the chosen project, then run
+`python scripts/verify-artifact.py --minecraft 1.21.11` and
+`python scripts/package-downloads.py --minecraft 1.21.11` from the repository root.
+Use `--minecraft 26.2` for the other version.

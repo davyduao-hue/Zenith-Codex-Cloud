@@ -19,6 +19,8 @@ public class RoundedRendererModern implements RoundedRendererInternal {
 
     @Override
     public void begin() {
+        // Shapes are submitted immediately; discard the empty staging mesh left by a theme switch.
+        if (roundedMesh.isBuilding()) roundedMesh.end();
         roundedMesh.begin();
     }
 

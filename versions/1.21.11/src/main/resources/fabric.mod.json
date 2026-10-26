@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "name": "Zenith Client 2.0",
+  "id": "meteor-client",
+  "version": "${version}",
+  "description": "Zenith UI, HUD, effects and modules for Minecraft 1.21.11.",
+  "authors": [
+    "Zenith contributors",
+    "MineGame159",
+    "squidoodly",
+    "seasnail"
+  ],
+  "contact": {
+    "sources": "https://github.com/davyduao-hue/Zenith-Codex-Cloud"
+  },
+  "license": "GPL-3.0",
+  "icon": "assets/zenith/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "meteordevelopment.meteorclient.MeteorClient"
+    ],
+    "modmenu": [
+      "meteordevelopment.meteorclient.modintegration.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "meteor-client.mixins.json",
+    "meteor-client-baritone.mixins.json",
+    "meteor-client-indigo.mixins.json",
+    "meteor-client-sodium.mixins.json",
+    "meteor-client-lithium.mixins.json",
+    "meteor-client-viafabricplus.mixins.json",
+    "zenith.mixins.json",
+    "catppuccin.mixins.json",
+    "nora-tweaks.mixins.json"
+  ],
+  "accessWidener": "meteor-client.accesswidener",
+  "custom": {
+    "meteor-client:build_number": "${build_number}",
+    "meteor-client:color": "145,61,226",
+    "meteor-client:commit": "${commit}",
+    "modmenu": {
+      "links": {
+        "modmenu.discord": "https://meteorclient.com/discord"
+      }
+    },
+    "badoptimizations:cache_hooks": {
+      "lightmap": "meteordevelopment.meteorclient.modintegration.BadOptimizationsHook"
+    }
+  },
+  "depends": {
+    "java": ">=25",
+    "minecraft": [
+      "${minecraft_version}"
+    ],
+    "fabricloader": ">=${loader_version}"
+  },
+  "breaks": {
+    "optifabric": "*",
+    "feather": "*",
+    "origins": "*",
+    "sodium": "<0.8.7",
+    "morechathistory": "*",
+    "lithium": "<0.21.3"
+  }
+}

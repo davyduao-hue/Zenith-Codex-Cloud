@@ -39,6 +39,8 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 /** Only loaded by runSmokeClient, in a separate game directory and a uniquely named throwaway world. */
 public final class SmokeAddon extends MeteorAddon {
     private int stage, ticks;
+    private long renderedFrames, observedFrame;
+    @EventHandler private void frame(meteordevelopment.meteorclient.events.render.Render3DEvent event) { renderedFrames++; }
     private final List<String> checks=new ArrayList<>();
     private boolean started, finished;
     private long attackBefore;
@@ -65,6 +67,8 @@ public final class SmokeAddon extends MeteorAddon {
             if(!started) {
                 if(!(mc.gui.screen() instanceof ZenithMenuScreen)||mc.gui.overlay()!=null)return;
                 started=true;
+                mc.options.renderDistance().set(4);
+                mc.options.simulationDistance().set(4);
                 mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
                 require(meteordevelopment.meteorclient.utils.Utils.canOpenGui(),"Right Shift GUI eligibility recognizes Zenith main menu");
                 require(mc.gui.screen() instanceof TitleScreen,"Zenith menu retains TitleScreen compatibility with addons");
@@ -76,6 +80,20 @@ public final class SmokeAddon extends MeteorAddon {
                 for(String name:List.of("crystal-aura","kill-aura","aimbot","zenith-aim-assist","esp","block-esp","stash-finder","auto-totem","small-totem","zenith-effects","zenith-crystal-aura","zenith-kill-aura"))
                     require(Modules.get().get(name)!=null,"module registered: "+name);
                 require(Modules.get().get("zenith-crystal-aura").addon.name.equals("Zenith Addons"),"custom combat modules have Zenith Addons identity");
+                for(var module:meteordevelopment.meteorclient.zenith.addons.ZenithVisualModules.all()) {
+                    require(Modules.get().get(module.name)==module&&module.addon.name.equals("Zenith Addons"),"new optional module registered: "+module.name);
+                    module.disable();module.settings.reset();
+                }
+                for(String themeName:List.of("Meteor","Catppuccin","Zenith 2.0")) {
+                    GuiThemes.select(themeName);
+                    for(var module:meteordevelopment.meteorclient.zenith.addons.ZenithVisualModules.all())mc.gui.setScreen(GuiThemes.get().moduleScreen(module));
+                    require(true,"ten new module settings screens open in "+themeName);
+                }
+                GuiThemes.select("Zenith 2.0");mc.gui.setScreen(new ZenithMenuScreen());
+                var motionTheme=(ZenithGuiTheme)GuiThemes.get();
+                motionTheme.reducedMotion.set(true);motionTheme.motionSpeed.set(2.0);GuiThemes.save();
+                require(motionTheme.reducedMotion.get()&&motionTheme.motionSpeed.get()==2,"Zenith reduced-motion and animation-speed settings are editable");
+                motionTheme.reducedMotion.reset();motionTheme.motionSpeed.reset();
                 require(Hud.get().infos.keySet().stream().filter(n->n.startsWith("zenith-")).count()==8,"eight editable Zenith widgets registered");
                 for(String name:List.of("zenith-crystal-aura","zenith-kill-aura")){Modules.get().get(name).disable();Modules.get().get(name).settings.reset();}
                 Modules.get().get(ZenithEffects.class).settings.reset();Modules.get().get(ZenithEffects.class).enable();
@@ -124,6 +142,8 @@ public final class SmokeAddon extends MeteorAddon {
                     require(example.category.name.equals("Example Addon"),"external addon category registered");
                 }
             }
+            // A toggle assertion must observe a new frame, even during catch-up ticks.
+            if (((stage == 7 && ticks == 124) || (stage == 8 && ticks == 7)) && renderedFrames == observedFrame) return;
             ticks++;
             switch(stage) {
                 case 0 -> { if(ticks==25) { shot("01-menu");next(); } }
@@ -131,6 +151,7 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==1)mc.gui.setScreen(GuiThemes.get().modulesScreen());
                     if(ticks==18){require(mc.gui.screen() instanceof CatppuccinModulesScreen,"Zenith defaults to rounded native category windows");shot("02-native-zenith");}
                     if(ticks==20){((ZenithGuiTheme)GuiThemes.get()).layout.set(ZenithGuiTheme.Layout.Dashboard);mc.gui.setScreen(GuiThemes.get().modulesScreen());}
+                    if(ticks==22){mc.gui.screen().keyPressed(new KeyEvent(70,0,2));for(char c:"zenith crystal aura".toCharArray())mc.gui.screen().charTyped(new CharacterEvent(c));}
                     if(ticks==30){shot("02-modules");require(mc.gui.screen() instanceof ZenithGuiScreen,"custom animated GUI opened");require(GuiThemes.get().name.equals("Zenith 2.0"),"Zenith 2.0 theme selected");}
                     if(ticks==32) {
                         var aura=Modules.get().get(ZenithCrystalAura.class);
@@ -139,6 +160,7 @@ public final class SmokeAddon extends MeteorAddon {
                         click(800,284,0);require((Integer)aura.settings.get("minimum-fps").get()>80,"custom slider changed setting");
                         aura.settings.get("zenith-profile").reset();aura.settings.get("pause-in-menus").reset();aura.settings.get("minimum-fps").reset();
                         mc.gui.screen().keyPressed(new KeyEvent(70,0,2));
+                        mc.gui.screen().keyPressed(new KeyEvent(65,0,2));
                         for(char c:"zenith effects".toCharArray())mc.gui.screen().charTyped(new CharacterEvent(c));
                         require(((ZenithGuiScreen)mc.gui.screen()).selectedModuleName().equals("zenith-effects"),"live module search selected matching result");
                     }
@@ -328,7 +350,7 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==90){rainBefore=mc.level.getRainLevel(1);thunderBefore=mc.level.getThunderLevel(1);fx.settings.get("sky-mood").parse("RainySilver");fx.settings.get("cinematic-rain").parse("true");mc.player.setXRot(8);}
                     if(ticks==115){require(fx.statistics().rainFrames()>0,"cinematic rain streaks and surface ripples rendered");shot("12-cinematic-rain");fx.settings.get("cinematic-rain").parse("false");}
                     if(ticks==117)require(Math.abs(mc.level.getRainLevel(1)-rainBefore)<.02&&Math.abs(mc.level.getThunderLevel(1)-thunderBefore)<.02,"disabling cinematic rain restores previous local weather");
-                    if(ticks==123){require(fx.bloomLightCount()>0,"crystal energy bloom remains animated");fx.settings.get("energy-blooms").parse("false");}
+                    if(ticks==123){require(fx.bloomLightCount()>0,"crystal energy bloom remains animated");fx.settings.get("energy-blooms").parse("false");observedFrame=renderedFrames;}
                     if(ticks==125) {
                         require(fx.bloomLightCount()==0,"energy bloom toggle stops procedural spiral sprites");
                         fx.settings.get("extra-effects-strength").parse("0");
@@ -425,6 +447,7 @@ public final class SmokeAddon extends MeteorAddon {
                     }
                     if(ticks==5)hudPressesBefore=hud(ZenithHud.Kind.Keys).feedback().acceptedPresses();
                     if(ticks==6) {
+                        observedFrame=renderedFrames;
                         for(int key:new int[]{87,32}) {
                             MeteorClient.EVENT_BUS.post(meteordevelopment.meteorclient.events.meteor.KeyInputEvent.get(new KeyEvent(key,0,0),meteordevelopment.meteorclient.utils.misc.input.KeyAction.Press));
                             MeteorClient.EVENT_BUS.post(meteordevelopment.meteorclient.events.meteor.KeyInputEvent.get(new KeyEvent(key,0,0),meteordevelopment.meteorclient.utils.misc.input.KeyAction.Release));
@@ -495,6 +518,39 @@ public final class SmokeAddon extends MeteorAddon {
                     }
                 }
                 case 10 -> {
+                    var visuals=meteordevelopment.meteorclient.zenith.addons.ZenithVisualModules.all();
+                    if(ticks==1) {
+                        mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+                        command("kill @e[type=minecraft:end_crystal]");command("tp @s 100 -60 100 0 10");
+                        command("gamemode survival");command("effect clear @s");command("item replace entity @s armor.chest with minecraft:diamond_chestplate[minecraft:damage=510]");
+                        command("item replace entity @s weapon.mainhand with minecraft:diamond_sword");
+                        command("summon minecraft:zombie 100 -60 102 {NoAI:1b,PersistenceRequired:1b}");
+                        Modules.get().get("zenith-module-toasts").enable();
+                        var waypoint=Modules.get().get("zenith-waypoint-beacon");waypoint.settings.get("capture-on-enable").parse("false");
+                        waypoint.settings.get("x").parse("100");waypoint.settings.get("y").parse("-60");waypoint.settings.get("z").parse("105");
+                        for(var module:visuals)module.enable();
+                    }
+                    if(ticks==5){mc.options.keyJump.setDown(true);command("damage @s 14 minecraft:generic");}
+                    if(ticks==9)mc.options.keyJump.setDown(false);
+                    if(ticks==16)for(Entity entity:mc.level.entitiesForRendering())if(entity instanceof Zombie&&mc.player.distanceTo(entity)<4){mc.gameMode.attack(mc.player,entity);break;}
+                    if(ticks==23) {
+                        for(String name:List.of("zenith-jump-rings","zenith-target-focus","zenith-damage-numbers","zenith-viewmodel-motion","zenith-crosshair-pulse","zenith-low-health-glow","zenith-armor-warning","zenith-module-toasts","zenith-waypoint-beacon")) {
+                            var module=(meteordevelopment.meteorclient.zenith.addons.ZenithVisualModules.Visual)Modules.get().get(name);
+                            require(module.submissions()>0,name+" rendered in the integrated world");
+                        }
+                        shot("36-new-visual-modules");mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+                    }
+                    if(ticks==32) {
+                        var crown=(meteordevelopment.meteorclient.zenith.addons.ZenithVisualModules.Visual)Modules.get().get("zenith-orbit-crown");
+                        require(crown.submissions()>0,"orbit crown rendered in third person");shot("37-orbit-crown");
+                        require(visuals.stream().allMatch(m->m.retained()<=24),"new animation histories remain bounded");
+                        for(var module:visuals)module.disable();
+                        require(visuals.stream().allMatch(m->m.retained()==0&&m.submissions()==0),"new modules release transient animation state on disable");
+                        mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);command("gamemode creative");
+                    }
+                    if(ticks==40){require(visuals.stream().allMatch(m->m.submissions()==0),"disabled new modules stop submitting visuals");next();}
+                }
+                case 11 -> {
                     if(ticks==1){mc.disconnectFromWorld(net.minecraft.network.chat.Component.literal("Zenith smoke completed"));}
                     if(ticks==40) {
                         require(mc.gui.screen() instanceof ZenithMenuScreen,"disconnect returns to Zenith main menu after all themes and addons");

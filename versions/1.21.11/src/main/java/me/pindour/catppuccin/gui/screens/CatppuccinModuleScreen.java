@@ -1,0 +1,271 @@
+package me.pindour.catppuccin.gui.screens;
+
+import me.pindour.catppuccin.api.text.RichText;
+import me.pindour.catppuccin.gui.themes.catppuccin.CatppuccinGuiTheme;
+import me.pindour.catppuccin.gui.themes.catppuccin.icons.CatppuccinBuiltinIcons;
+import me.pindour.catppuccin.gui.themes.catppuccin.widgets.container.WCatppuccinWindow;
+import me.pindour.catppuccin.gui.themes.catppuccin.widgets.settings.WCatppuccinKeybind;
+import me.pindour.catppuccin.utils.WidgetUtils;
+import meteordevelopment.meteorclient.MeteorClient;
+import meteordevelopment.meteorclient.events.meteor.ActiveModulesChangedEvent;
+import meteordevelopment.meteorclient.events.meteor.ModuleBindChangedEvent;
+import meteordevelopment.meteorclient.gui.WidgetScreen;
+import meteordevelopment.meteorclient.gui.WindowScreen;
+import meteordevelopment.meteorclient.gui.utils.Cell;
+import meteordevelopment.meteorclient.gui.widgets.WLabel;
+import meteordevelopment.meteorclient.gui.widgets.WWidget;
+import meteordevelopment.meteorclient.gui.widgets.containers.WContainer;
+import meteordevelopment.meteorclient.gui.widgets.containers.WHorizontalList;
+import meteordevelopment.meteorclient.gui.widgets.containers.WVerticalList;
+import meteordevelopment.meteorclient.gui.widgets.input.WDropdown;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WButton;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WCheckbox;
+import meteordevelopment.meteorclient.gui.widgets.pressable.WFavorite;
+import meteordevelopment.meteorclient.systems.modules.Module;
+import meteordevelopment.meteorclient.systems.modules.Modules;
+import meteordevelopment.meteorclient.utils.misc.NbtUtils;
+import meteordevelopment.meteorclient.utils.render.prompts.OkPrompt;
+import meteordevelopment.orbit.EventHandler;
+import net.minecraft.nbt.CompoundTag;
+
+//? if >=1.21.5
+import java.util.Optional;
+
+import static meteordevelopment.meteorclient.utils.Utils.getWindowWidth;
+
+public class CatppuccinModuleScreen extends WindowScreen {
+    private final CatppuccinGuiTheme theme;
+    private final Module module;
+
+    private WContainer settingsContainer;
+    private WCatppuccinKeybind keybind;
+    private WCheckbox active;
+
+    public CatppuccinModuleScreen(CatppuccinGuiTheme theme, Module module) {
+        super(theme, theme.favorite(module.favorite), module.title);
+        ((WFavorite) window.icon).action = () -> module.favorite = ((WFavorite) window.icon).checked;
+
+        this.theme = theme;
+        this.module = module;
+    }
+
+    @Override
+    public void initWidgets() {
+        double pad = theme.pad();
+
+        WCatppuccinWindow window = (WCatppuccinWindow) this.window;
+        window.view.spacing = 0;
+
+        WVerticalList moduleInfo = window.add(theme.verticalList()).padHorizontal(pad).padBottom(pad).expandX().widget();
+        moduleInfo.spacing = pad;
+
+        // Description
+        moduleInfo.add(theme.label(module.description, getWindowWidth() / 4.0));
+
+        if (module.addon != null && module.addon != MeteorClient.ADDON) {
+            WHorizontalList addon = moduleInfo.add(theme.horizontalList()).expandX().widget();
+            addon.add(theme.label("From: ").color(theme.textSecondaryColor()));
+            addon.add(theme.label(module.addon.name).color(theme.accentColor()));
+        }
+
+        // Keybind
+        WHorizontalList bind = moduleInfo.add(
+                theme.horizontalList()).expandX().padVertical(pad).widget();
+        bind.spacing = pad;
+
+        keybind = bind.add(theme.catppuccinKeybind(module.keybind)).widget();
+        keybind.actionOnSet = () -> Modules.get().setModuleToBind(module);
+
+        BindAction bindAction = module.toggleOnBindRelease ? BindAction.HOLD : BindAction.TOGGLE;
+
+        WDropdown<BindAction> bindActionWidget = bind.add(theme.dropdown(bindAction)).expandCellX().widget();
+        bindActionWidget.action = () -> module.toggleOnBindRelease = bindActionWidget.get().isHold();
+        bindActionWidget.tooltip = "Determines whether the module toggles or remains active only while holding the key.";
+
+        WidgetUtils.reset(
+                bind,
+                null,
+                () -> {
+                    BindAction toggle = BindAction.TOGGLE;
+                    keybind.resetBind();
+                    module.toggleOnBindRelease = toggle.isHold();
+                    bindActionWidget.set(toggle);
+                },
+                () -> bind.mouseOver
+        );
+
+        // Chat feedback
+        WHorizontalList cf = moduleInfo.add(theme.horizontalList()).expandX().widget();
+
+        WCheckbox cfC = cf.add(theme.checkbox(module.chatFeedback)).widget();
+        cfC.action = () -> module.chatFeedback = cfC.checked;
+
+        WLabel cfLabel = theme.label("Chat Feedback");
+        cfLabel.tooltip = "Displays a toggle message in chat when enabled.";
+        cf.add(cfLabel);
+
+        WButton category = moduleInfo.add(theme.button("Add to Custom Category")).expandX().widget();
+        category.action = () -> MeteorClient.mc.setScreen(new me.noramibu.tweaks.gui.screens.AddToCategoryScreen(theme, module));
+
+        moduleInfo.add(theme.horizontalSeparator()).expandX();
+
+        // Settings
+        if (!module.settings.groups.isEmpty()) {
+            settingsContainer = window.add(theme.verticalList()).expandX().widget();
+            settingsContainer.add(theme.settings(module.settings)).expandX();
+        }
+
+        // Custom widget
+        WWidget widget = module.getWidget(theme);
+
+        if (widget != null) {
+            window.add(theme.horizontalSeparator()).pad(pad).expandX();
+
+            WContainer container = window.add(theme.horizontalList()).expandX().padHorizontal(pad).widget();
+            Cell<WWidget> cell = container.add(widget);
+
+            if (widget instanceof WContainer) cell.expandX();
+        }
+
+        double windowPadding = window.padding;
+
+        if (!module.settings.groups.isEmpty() || widget != null)
+            window.addDirect(theme.horizontalSeparator()).padHorizontal(windowPadding * 2).expandX();
+
+        // Bottom - isn't added to the view, making it "stick" at the bottom
+        WHorizontalList bottom = window.addDirect(theme.horizontalList())
+                .expandX()
+                .padHorizontal(windowPadding * 2)
+                .padVertical(windowPadding)
+                .widget();
+
+        // Active
+        active = bottom.add(theme.checkbox(module.isActive())).widget();
+        active.action = () -> {
+            if (module.isActive() != active.checked) module.toggle();
+        };
+
+        bottom.add(theme.label(RichText.of("Active"))).expandCellX().padLeft(4);
+
+        // Config sharing
+        WHorizontalList sharing = bottom.add(theme.horizontalList()).right().widget();
+        WButton copy = sharing.add(theme.button(CatppuccinBuiltinIcons.COPY.texture())).widget();
+        copy.action = () -> {
+            if (toClipboard()) {
+                OkPrompt.create()
+                        .title("Module copied!")
+                        .message("The settings for this module are now in your clipboard.")
+                        .message("You can also copy settings using Ctrl+C.")
+                        .message("Settings can be imported using Ctrl+V or the paste button.")
+                        .id("config-sharing-guide")
+                        .show();
+            }
+        };
+        copy.tooltip = "Copy config";
+
+        WButton paste = sharing.add(theme.button(CatppuccinBuiltinIcons.IMPORT.texture())).widget();
+        paste.action = this::fromClipboard;
+        paste.tooltip = "Paste config";
+    }
+
+    @Override
+    public boolean shouldCloseOnEsc() {
+        return !Modules.get().isBinding();
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+
+        module.settings.tick(settingsContainer, theme);
+    }
+
+    @EventHandler
+    private void onModuleBindChanged(ModuleBindChangedEvent event) {
+        keybind.reset();
+    }
+
+    @EventHandler
+    private void onActiveModulesChanged(ActiveModulesChangedEvent event) {
+        this.active.checked = module.isActive();
+    }
+
+    @Override
+    public boolean toClipboard() {
+        CompoundTag tag = new CompoundTag();
+
+        tag.putString("name", module.name);
+
+        CompoundTag settingsTag = module.settings.toTag();
+        if (!settingsTag.isEmpty()) tag.put("settings", settingsTag);
+
+        return writeClipboardTag(tag);
+    }
+
+    @Override
+    public boolean fromClipboard() {
+        CompoundTag tag = readClipboardTag();
+        if (tag == null) return false;
+
+        if (!applySettingsFromTag(tag)) return false;
+
+        if (parent instanceof WidgetScreen p) p.reload();
+        reload();
+
+        return true;
+    }
+
+    private CompoundTag readClipboardTag() {
+        //? if <=1.21.3 {
+        /*CompoundTag schema = new CompoundTag();
+        schema.putString("name", module.name);
+
+        CompoundTag schemaSettings = module.settings.toTag();
+        if (!schemaSettings.isEmpty()) schema.put("settings", schemaSettings);
+
+        return NbtUtils.fromClipboard(schema);
+
+        *///?} else {
+        return NbtUtils.fromClipboard();
+        //?}
+    }
+
+    private boolean applySettingsFromTag(CompoundTag tag) {
+        //? if <=1.21.4 {
+        /*if (!tag.contains("name") || !tag.getString("name").equals(module.name)) return false;
+        module.settings.fromTag(tag.getCompound("settings"));
+
+        *///?} else {
+        if (!tag.getStringOr("name", "").equals(module.name)) return false;
+
+        Optional<CompoundTag> settings = tag.getCompound("settings");
+
+        if (settings.isPresent()) module.settings.fromTag(settings.get());
+        else module.settings.reset();
+        //?}
+
+        return true;
+    }
+
+    private boolean writeClipboardTag(CompoundTag tag) {
+        //? if <=1.21.3
+        //return NbtUtils.toClipboard(module.name, tag);
+        //? if >=1.21.4
+        return NbtUtils.toClipboard(tag);
+    }
+
+    private enum BindAction {
+        TOGGLE(false),
+        HOLD(true);
+
+        private final boolean hold;
+
+        BindAction(boolean hold) {
+            this.hold = hold;
+        }
+
+        public boolean isHold() {
+            return hold;
+        }
+    }
+}

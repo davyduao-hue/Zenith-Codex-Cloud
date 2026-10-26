@@ -35,6 +35,14 @@ public final class ZenithGuiTheme extends CatppuccinGuiTheme {
     );
 
     private final SettingGroup zenith = settings.createGroup("Zenith");
+    public final Setting<Boolean> reducedMotion = zenith.add(new BoolSetting.Builder().name("reduced-motion")
+        .description("Use immediate module switches and still headers; suppress click pulses.").defaultValue(false).build());
+    public final Setting<Double> motionSpeed = zenith.add(new DoubleSetting.Builder().name("motion-speed")
+        .description("Speed of Zenith module hover and switch animations.").defaultValue(1).range(.25,3).sliderRange(.25,3).build());
+    public final Setting<Boolean> clickPulses = zenith.add(new BoolSetting.Builder().name("click-pulses")
+        .description("A fading purple pulse follows each module toggle.").defaultValue(true).build());
+    public final Setting<Boolean> headerMotion = zenith.add(new BoolSetting.Builder().name("header-motion")
+        .description("Animate the glowing category header accent.").defaultValue(true).build());
     public final Setting<Layout> layout = zenith.add(new EnumSetting.Builder<Layout>()
         .name("layout").description("Animated category windows or the full Zenith dashboard. Reopen Modules to apply.")
         .defaultValue(Layout.Categories).build());

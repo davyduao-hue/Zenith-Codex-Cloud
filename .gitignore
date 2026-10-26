@@ -18,3 +18,5 @@ logs
 !.idea/scopes/*
 
 run-smoke/
+
+__pycache__/

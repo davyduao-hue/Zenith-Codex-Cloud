@@ -29,7 +29,7 @@ public class CatppuccinTextRenderer {
             RichTextOperation operation = getOperation(textPool, segmentX, y, color)
                     .set(segment, theme.richTextRenderer());
 
-            StyleKey key = new StyleKey(operation.getStyle(), operation.getScale());
+            StyleKey key = new StyleKey(theme.richTextRenderer(), operation.getStyle(), theme.scale(operation.getScale()));
 
             groupedOperations
                     .computeIfAbsent(key, k -> new ArrayList<>())
@@ -51,20 +51,23 @@ public class CatppuccinTextRenderer {
 
             StyleKey key = entry.getKey();
 
-            theme.richTextRenderer().setFontStyle(key.style());
-            theme.richTextRenderer().begin(
+            // Use the renderer captured when queued, including during a theme transition.
+            RichTextRenderer renderer = key.renderer();
+            renderer.setFontStyle(key.style());
+            renderer.begin(
                     //? if >=26.2
                     graphics,
-                    theme.scale(key.scale())
+                    key.scale()
             );
 
             for (RichTextOperation text : textOps) {
                 text.run(textPool);
             }
 
-            theme.richTextRenderer().end();
+            renderer.end();
             textOps.clear();
         }
+        groupedOperations.clear();
     }
 
     private <T extends GuiRenderOperation<T>> T getOperation(Pool<T> pool, double x, double y, Color color) {
@@ -73,5 +76,5 @@ public class CatppuccinTextRenderer {
         return op;
     }
 
-    public record StyleKey(FontStyle style, double scale) { }
+    public record StyleKey(RichTextRenderer renderer, FontStyle style, double scale) { }
 }

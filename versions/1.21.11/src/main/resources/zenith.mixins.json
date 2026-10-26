@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "meteordevelopment.meteorclient.zenith.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ZenithLoadingMixin",
+    "ZenithSkyMixin",
+    "ZenithExplosionMixin",
+    "ZenithWeatherMixin",
+    "ZenithCloudMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

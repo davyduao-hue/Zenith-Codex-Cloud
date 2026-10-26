@@ -15,5 +15,5 @@ public final class ZenithAddons extends MeteorAddon {
     @Override public String getPackage(){return "meteordevelopment.meteorclient.zenith.addons";}
     @Override public String getWebsite(){return "https://github.com/davyduao-hue/Zenith-Codex-Cloud";}
     @Override public void onRegisterCategories(){Modules.registerCategory(CATEGORY);}
-    @Override public void onInitialize(){Modules.get().add(new ZenithCrystalAura());Modules.get().add(new ZenithKillAura());}
+    @Override public void onInitialize(){Modules.get().add(new ZenithCrystalAura());Modules.get().add(new ZenithKillAura());ZenithVisualModules.install();}
 }

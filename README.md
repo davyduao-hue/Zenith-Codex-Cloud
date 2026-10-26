@@ -1,9 +1,18 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.0.9** includes built-in Catppuccin and Nora Tweaks source,
+source. Version **2.1.0** includes built-in Catppuccin and Nora Tweaks source,
 a distinct purple Zenith theme with animated pill switches, a floating-star main menu, editable HUD,
 and red-dusk/silver-storm atmosphere and combat visuals based on the recordings.
+
+[Download the matching JAR or complete source ZIP](downloads/README.md).
+
+A separate **Minecraft 1.21.11** build lives in [versions/1.21.11](versions/1.21.11).
+Use its matching JAR and Java 25; from the repository root build it with
+`gradlew.bat -p versions\1.21.11 build`. Each version has its own source ZIP.
+
+Update 2.1 adds [ten optional modules and GUI motion controls](docs/NEW-MODULES.md),
+including jump rings, damage numbers, viewmodel motion, armor warnings and waypoints.
 
 ## Build in Windows Command Prompt
 
@@ -18,12 +27,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.0.9+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.1.0+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.0.9+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.1.0+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -247,11 +256,12 @@ module, settings editor and live event handlers. It checks sky geometry at all t
 quality levels, live quality changes, shooting
 stars, rain restoration, pearl arrival pulses and cleanup when disabled. Results
 and screenshots go to `build/smoke`; inspect `result.json` as well as the process
-exit code. The test addon is excluded from the distributable JAR. The 2.0.9 run with Glazed passed **195**
+exit code. The test addon is excluded from the distributable JAR. The 2.1.0 run with Glazed passed **222**
 checks, including the built-in addons, three themes, native library loading, actual
 short key taps, look-dot motion/recentering, silver rain, both reference sky presets,
 custom panoramas, sky-source switching and Glazed module settings in every theme.
-The standalone run passed **176** checks. Checks exercise the additional
+Standalone runs passed **204** checks on each version. The 1.21.11 checks also
+launch the packaged JAR through standard Fabric, both with and without Glazed. Checks exercise the additional
 effect layers, strength/toggle controls, frame limits and cleanup. Performance
 checks compare culling off/on, turn the camera, verify cached sky/panorama reuse,
 change quality and disable/re-enable the effects. Render-work measurements are

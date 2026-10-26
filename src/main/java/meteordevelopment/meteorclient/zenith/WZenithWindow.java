@@ -13,7 +13,8 @@ public final class WZenithWindow extends WCatppuccinWindow {
         roundedRect().bounds(header).radii(radius(),radius(),bottom,bottom)
             .color(new Color(29,18,45,245)).outline(new Color(accent.r,accent.g,accent.b,80),1f)
             .shadow(12,0,new Color(accent.r,accent.g,accent.b,28)).render();
-        double time=System.nanoTime()/1e9;
+        ZenithGuiTheme zenith=(ZenithGuiTheme)theme;
+        double time=zenith.reducedMotion.get()||!zenith.headerMotion.get()?0:System.nanoTime()/1e9*zenith.motionSpeed.get();
         double inset=theme.scale(14),track=header.width-2*inset;
         roundedRect().pos(header.x+inset,header.y+header.height-theme.scale(2)).size(track,theme.scale(1))
             .radius(1).color(new Color(accent.r,accent.g,accent.b,65)).render();

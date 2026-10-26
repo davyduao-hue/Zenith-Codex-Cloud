@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Publishable client/source bundle using the already verified Gradle outputs."""
+import argparse
 import hashlib
 import shutil
 import zipfile
@@ -8,12 +9,17 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 properties = dict(line.split('=', 1) for line in (root / 'gradle.properties').read_text().splitlines() if '=' in line and not line.startswith('#'))
 version = properties['zenith_version']
+parser = argparse.ArgumentParser()
+parser.add_argument('--minecraft', choices=['26.2', '1.21.11'], default='26.2')
+mc = parser.parse_args().minecraft
+project = root if mc == '26.2' else root / 'versions/1.21.11'
+suffix = '' if mc == '26.2' else '-MC1.21.11'
 output = root / 'downloads'
 output.mkdir(exist_ok=True)
-jar = output / 'Zenith-Client-2.0-MC26.2.jar'
-source = output / 'Zenith-Client-2.0-Source.zip'
-shutil.copyfile(root / f'build/libs/zenith-client-{version}+mc26.2.jar', jar)
-shutil.copyfile(root / f'build/distributions/zenith-client-{version}+mc26.2-source-project.zip', source)
+jar = output / f'Zenith-Client-2.0-MC{mc}.jar'
+source = output / f'Zenith-Client-2.0-Source{suffix}.zip'
+shutil.copyfile(project / f'build/libs/zenith-client-{version}+mc{mc}.jar', jar)
+shutil.copyfile(project / f'build/distributions/zenith-client-{version}+mc{mc}-source-project.zip', source)
 instructions = f'''Zenith Client 2.0 - update {version}
 
 Install: Minecraft 26.2, Fabric Loader 0.19.3 or newer, Java 25.
@@ -61,12 +67,16 @@ Minecraft 26.2 and compatible Meteor APIs.
 
 Source: https://github.com/davyduao-hue/Zenith-Codex-Cloud
 '''
-bundle = output / 'Zenith-Client-2.0-Download.zip'
+if mc == '1.21.11':
+    instructions = instructions.replace('26.2', '1.21.11').replace('0.19.3', '0.18.2').replace('0.161.0', '0.141.6')
+    instructions = instructions.replace('Zenith-Client-2.0-Source.zip', source.name).replace('inside\nZenith-Client-2.0,', 'inside\nZenith-Client-1.21.11,')
+instructions += '\nTen optional Zenith visual modules and GUI motion controls are included.\nSee docs/NEW-MODULES.md in the source for their controls.\n'
+bundle = output / f'Zenith-Client-2.0-Download{suffix}.zip'
 with zipfile.ZipFile(bundle, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
     archive.write(jar, jar.name)
     archive.write(source, source.name)
     archive.writestr('INSTALL.txt', instructions)
-files = [jar, source, bundle]
+files = sorted(output.glob('*.jar')) + sorted(output.glob('*.zip'))
 (output / 'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n' for path in files))
 for path in files:
     print(f'{path.name}: {path.stat().st_size:,} bytes')

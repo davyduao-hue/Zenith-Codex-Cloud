@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "zenith-example-addon",
+  "version": "${version}",
+  "name": "Zenith Example Addon",
+  "description": "A separate Meteor-style addon with a category, settings and an event handler.",
+  "authors": ["Zenith contributors"],
+  "license": "GPL-3.0",
+  "environment": "client",
+  "entrypoints": {"meteor": ["dev.zenith.example.ExampleAddon"]},
+  "depends": {"meteor-client": "*", "minecraft": "~1.21.11", "fabricloader": ">=0.18.2", "java": ">=25"}
+}
