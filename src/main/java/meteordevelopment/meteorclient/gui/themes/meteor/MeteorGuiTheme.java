@@ -380,7 +380,7 @@ public class MeteorGuiTheme extends GuiTheme {
 
     @Override
     public double scale(double value) {
-        double scaled = value * scale.get();
+        double scaled = value * scale.get() * meteordevelopment.meteorclient.systems.config.Config.get().menuSize.get();
 
         if (MacosUtil.IS_MACOS) {
             scaled /= (double) mc.getWindow().getWidth() / mc.getWindow().getWidth();

@@ -1,3 +1,19 @@
+# UI sizing update 2.2.1 — 2026-10-27
+
+Minecraft 26.2. Build and 33 unit tests passed; 239 checks passed with Glazed
+26.2-n-17.2 installed. The added checks cover compact HUD dimensions, the UI tab,
+persistent global size settings, explicit RTP-repeat opt-in, and rejecting saved
+RTP activation. The fake-ban preview still retains the connection and is removed
+from the sidebar quick toggles. Its module remains available for deliberate use.
+
+[Result](ui-sizing-validation.json). Runs use Linux/Xvfb/software OpenGL.
+The cause of the reported ban is unknown; these changes do not reverse real server
+bans or establish that any module is undetectable. Live server behavior was not tested.
+
+![UI size controls](screenshots/ui-sizing/settings.png)
+
+![Compact sidebar](screenshots/ui-sizing/sidebar.png)
+
 # Donut update 2.2.0 — 2026-10-27
 
 Minecraft 26.2 only. Build passed with Java 25; **33 unit tests** passed and the

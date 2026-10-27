@@ -74,6 +74,7 @@ public final class SmokeAddon extends MeteorAddon {
                 require(mc.gui.screen() instanceof TitleScreen,"Zenith menu retains TitleScreen compatibility with addons");
                 GuiThemes.select("Zenith");GuiThemes.get().settings.reset();
                 require(GuiThemes.get().name.equals("Zenith 2.0"),"legacy Zenith theme selection migrates to Zenith 2.0");
+                meteordevelopment.meteorclient.systems.config.Config.get().zenithUi.reset();
                 Hud.get().resetToDefaultElements();
                 Files.createDirectories(results);
                 Files.deleteIfExists(results.resolve("result.json"));
@@ -446,8 +447,9 @@ public final class SmokeAddon extends MeteorAddon {
                 case 8 -> {
                     if(ticks==1){mc.gui.setScreen(null);mc.player.setYRot(0);mc.player.setXRot(0);}
                     if(ticks==5){
-                        require((Double)hud(ZenithHud.Kind.Keys).settings.get("size-multiplier").get()==2,"existing and new HUD widgets default to 2x size");
-                        require(hud(ZenithHud.Kind.Keys).getWidth()>170,"enlarged keycaps render at readable physical size");
+                        require((Double)hud(ZenithHud.Kind.Keys).settings.get("size-multiplier").get()==2,"per-widget multipliers are preserved for saved layouts");
+                        require(meteordevelopment.meteorclient.systems.config.Config.get().hudSize.get()==.5,"global HUD defaults to half of previous size");
+                        require(hud(ZenithHud.Kind.Keys).getWidth()>70&&hud(ZenithHud.Kind.Keys).getWidth()<180,"compact keycaps render at smaller physical size");
                     }
                     if(ticks==5)hudPressesBefore=hud(ZenithHud.Kind.Keys).feedback().acceptedPresses();
                     if(ticks==6) {
@@ -564,7 +566,12 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==100){require(finder.detections()>0,"Donut finder detects three placed storage blocks in a loaded chunk");shot("38-donut-regions");Modules.get().get("zenith-donut-panel").enable();}
                     if(ticks==105){require(mc.gui.screen() instanceof meteordevelopment.meteorclient.zenith.addons.DonutTools.QuickPanel,"Donut sidebar opens");shot("39-donut-panel");mc.gui.screen().onClose();Modules.get().get("zenith-fake-ban-screen").enable();}
                     if(ticks==110){require(mc.gui.screen() instanceof meteordevelopment.meteorclient.zenith.addons.DonutTools.BanPreview&&mc.level!=null,"fake ban preview keeps the world connected");shot("40-fake-ban");mc.gui.screen().onClose();Modules.get().get("zenith-rtper").enable();}
-                    if(ticks==115){require(!Modules.get().get("zenith-rtper").isActive(),"RTP stops in singleplayer without sending commands");finder.disable();Modules.get().get("zenith-chunk-region").disable();require(finder.detections()==0,"Donut finder clears detections when disabled");next();}
+                    if(ticks==115){require(!Modules.get().get("zenith-rtper").isActive(),"RTP stops in singleplayer without sending commands");finder.disable();Modules.get().get("zenith-chunk-region").disable();require(finder.detections()==0,"Donut finder clears detections when disabled");
+                        var rtp=Modules.get().get("zenith-rtper");rtp.settings.reset();require(rtp.settings.get("repeat-requests").get().equals(false),"RTP repetition requires explicit opt-in");
+                        var tag=rtp.toTag();tag.putBoolean("active",true);rtp.fromTag(tag);require(!rtp.isActive(),"saved RTP activation never resumes automatically");
+                        Tabs.get(meteordevelopment.meteorclient.gui.tabs.builtin.ZenithUiTab.class).openScreen(GuiThemes.get());}
+                    if(ticks==120){require(Tabs.get(meteordevelopment.meteorclient.gui.tabs.builtin.ZenithUiTab.class).isScreen(mc.gui.screen()),"dedicated UI settings tab opens");shot("41-ui-settings");
+                        var config=meteordevelopment.meteorclient.systems.config.Config.get();config.hudSize.set(.75);var tag=config.toTag();config.hudSize.set(.5);config.fromTag(tag);require(config.hudSize.get()==.75,"UI size survives configuration serialization");config.zenithUi.reset();config.save();mc.gui.screen().onClose();next();}
                 }
                 case 12 -> {
                     if(ticks==1){mc.disconnectFromWorld(net.minecraft.network.chat.Component.literal("Zenith smoke completed"));}

@@ -25,6 +25,12 @@ import static meteordevelopment.meteorclient.MeteorClient.mc;
 
 public class Config extends System<Config> {
     public final Settings settings = new Settings();
+    public final Settings zenithUi = new Settings();
+    private final SettingGroup ui = zenithUi.createGroup("UI size");
+    public final Setting<Double> hudSize = ui.add(new DoubleSetting.Builder().name("hud-size").description("Global Zenith HUD size. 0.5 halves the old doubled widgets, including saved layouts.").defaultValue(.5).range(.25,1.5).sliderRange(.25,1.5).build());
+    public final Setting<Double> menuSize = ui.add(new DoubleSetting.Builder().name("menu-size").description("Scales module menus in all themes. Apply after changing.").defaultValue(1).range(.6,1.5).sliderRange(.6,1.5).build());
+    public final Setting<Integer> sidebarWidth = ui.add(new IntSetting.Builder().name("sidebar-width").description("Donut sidebar width in GUI pixels. Reopen the sidebar to apply.").defaultValue(200).range(170,340).sliderRange(170,340).build());
+    public final Setting<Integer> sidebarRows = ui.add(new IntSetting.Builder().name("sidebar-row-height").description("Spacing of sidebar rows. Reopen the sidebar to apply.").defaultValue(20).range(14,30).sliderRange(14,30).build());
 
     private final SettingGroup sgVisual = settings.createGroup("Visual");
     private final SettingGroup sgModules = settings.createGroup("Modules");
@@ -210,6 +216,7 @@ public class Config extends System<Config> {
 
         tag.putString("version", MeteorClient.VERSION.toString());
         tag.put("settings", settings.toTag());
+        tag.put("zenithUi", zenithUi.toTag());
         tag.put("dontShowAgainPrompts", listToTag(dontShowAgainPrompts));
 
         return tag;
@@ -218,6 +225,7 @@ public class Config extends System<Config> {
     @Override
     public Config fromTag(CompoundTag tag) {
         if (tag.contains("settings")) settings.fromTag(tag.getCompoundOrEmpty("settings"));
+        if (tag.contains("zenithUi")) zenithUi.fromTag(tag.getCompoundOrEmpty("zenithUi"));
         if (tag.contains("dontShowAgainPrompts")) dontShowAgainPrompts = listFromTag(tag, "dontShowAgainPrompts");
 
         return this;

@@ -1,7 +1,7 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.2.0** includes built-in Catppuccin and Nora Tweaks source,
+source. Version **2.2.1** includes built-in Catppuccin and Nora Tweaks source,
 a distinct purple Zenith theme with animated pill switches, a floating-star main menu, editable HUD,
 and red-dusk/silver-storm atmosphere and combat visuals based on the recordings.
 
@@ -17,6 +17,10 @@ including jump rings, damage numbers, viewmodel motion, armor warnings and waypo
 Update 2.2 adds [original Donut tools](docs/DONUT.md) for 26.2: chunk clues, region
 map/outlines, bounded RTP, a purple settings sidebar and a local fake-ban preview.
 
+**Right Shift → UI** controls global HUD size, menu size and sidebar dimensions.
+The HUD now starts at half its previous displayed size, including saved layouts.
+New download filenames include the release and Minecraft versions.
+
 ## Build in Windows Command Prompt
 
 Install a **64-bit JDK 25** (for example Eclipse Temurin 25), then open a new
@@ -30,12 +34,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.2.0+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.2.1+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.2.0+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.2.1+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -53,9 +57,8 @@ under `.minecraft/zenith-client`.
   **Dashboard** for the previous sidebar/card layout. The dashboard's **Interface
   style** button opens the same GUI settings. Complex module settings keep their
   full native editor.
-- **HUD tab:** edit, add, move or remove widgets. Every Zenith element now has
-  **Size multiplier = 2** by default, including older profiles. Lower that setting
-  for the previous size. Rounded corners, graph lines and circles have soft edges;
+- **HUD tab:** edit, add, move or remove widgets. Per-widget multipliers are retained, with **UI → HUD size = 0.5**
+  halving the previous display size. Adjust that global setting or individual widget sizes. Rounded corners, graph lines and circles have soft edges;
   keys and Look Direction stack above the graphs when the hotbar leaves too little room.
 - **Render → Zenith Effects → Visual preset:** **Reference Crystal** selects the
   red dusk sky, orange embers and golden blast effects; **Reference Sword** selects

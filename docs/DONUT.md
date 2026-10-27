@@ -1,4 +1,4 @@
-# Zenith Donut tools — 26.2 / update 2.2.0
+# Zenith Donut tools — 26.2 / update 2.2.1
 
 Open **Right Shift → Zenith Donut**. Enable **Zenith Donut Panel** to open the
 purple quick-settings sidebar; bind it to a key in its module settings.
@@ -17,8 +17,9 @@ Fullbright, Auto Totem and Stash Finder reuse the existing Meteor implementation
   Negative coordinates use floor division. These are Minecraft region coordinates;
   DonutSMP-specific rank/media region labels await the user's map reference.
 - **RTPer:** sends the configurable command (default `rtp`) while enabled, no more
-  frequently than the selected interval (default 45 seconds, minimum 15). It stops
-  at the request limit (default ten). Operate any server selection menus manually;
+  frequently than the selected interval (default 45 seconds, minimum 15). It sends one request per activation by default. Turn on **Repeat requests**
+  explicitly for retries, which stop at the request limit (default ten).
+  RTP switches off on disconnect and never restores an active state from a profile. Operate any server selection menus manually;
   by default command requests pause while menus are open.
 - **RTP Base Finder:** the same bounded retry loop, stopping when your horizontal
   distance from 0,0 is within the configured radius (default 1,000 blocks). Only
@@ -37,5 +38,10 @@ This implements the named workflows, not every Glazed feature or an exact copy o
 its detection algorithms/map. The older 1.21.11 release remains available, but
 these additions target only Minecraft 26.2.
 
-Validation: 33 unit tests and 234 Glazed-enabled graphical checks passed. Live
+Validation: 33 unit tests and 239 Glazed-enabled graphical checks passed. Live
 DonutSMP command behavior and real-base detection accuracy have not been tested.
+
+**UI sizing:** Right Shift → UI provides HUD size, menu size, sidebar width and row
+height. Apply menu size after editing. The sidebar also has a UI settings button.
+The fake-ban preview is no longer in its quick-toggle list; open it deliberately
+from its module. A real server ban cannot be reversed by this client update.

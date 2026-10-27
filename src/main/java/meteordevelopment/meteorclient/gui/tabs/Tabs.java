@@ -25,6 +25,7 @@ public class Tabs {
         add(new ModulesTab());
         add(new ConfigTab());
         add(new GuiTab());
+        add(new ZenithUiTab());
         add(new HudTab());
         add(new FriendsTab());
         add(new MacrosTab());

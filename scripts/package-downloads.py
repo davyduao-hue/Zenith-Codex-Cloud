@@ -18,8 +18,8 @@ version = properties['zenith_version']
 suffix = '' if mc == '26.2' else '-MC1.21.11'
 output = root / 'downloads'
 output.mkdir(exist_ok=True)
-jar = output / f'Zenith-Client-2.0-MC{mc}.jar'
-source = output / f'Zenith-Client-2.0-Source{suffix}.zip'
+jar = output / f'Zenith-Client-{version}-MC{mc}.jar'
+source = output / f'Zenith-Client-{version}-MC{mc}-Source.zip'
 shutil.copyfile(project / f'build/libs/zenith-client-{version}+mc{mc}.jar', jar)
 shutil.copyfile(project / f'build/distributions/zenith-client-{version}+mc{mc}-source-project.zip', source)
 instructions = f'''Zenith Client 2.0 - update {version}
@@ -39,7 +39,8 @@ Reference Sword (silver storm), or Zenith Purple. Select a preset after upgradin
 to apply the new defaults to an existing settings profile.
 The former radar is now Look Direction, a mint camera-motion dot with L/R counters.
 Keys show press/release fills and expanding white rings, including short clicks.
-HUD widgets default to double size; each widget's Size multiplier adjusts it.
+Right Shift > UI controls global HUD size, menu size and sidebar dimensions.
+HUD size defaults to 0.5, halving the previous doubled widgets and saved layouts.
 Skybox > Sky source selects Zenith, Vanilla, Resource Pack or Custom Panorama.
 See docs/SKYBOXES.md in the source for custom panorama resource packs.
 Extra Effects adds impact crescents, blast comets, crystal energy funnels,
@@ -75,7 +76,8 @@ if mc == '1.21.11':
 instructions += '\nTen optional Zenith visual modules and GUI motion controls are included.\nSee docs/NEW-MODULES.md in the source for their controls.\n'
 if mc == '26.2':
     instructions += '\nZenith Donut: chunk clues, region grid, bounded RTP, purple sidebar and local ban preview.\nSee docs/DONUT.md; configure the server RTP command and cooldown before enabling.\n'
-bundle = output / f'Zenith-Client-2.0-Download{suffix}.zip'
+instructions = instructions.replace(f'Zenith-Client-2.0-MC{mc}.jar', jar.name).replace('Zenith-Client-2.0-Source.zip', source.name)
+bundle = output / f'Zenith-Client-{version}-MC{mc}-Bundle.zip'
 with zipfile.ZipFile(bundle, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
     archive.write(jar, jar.name)
     archive.write(source, source.name)

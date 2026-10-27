@@ -888,7 +888,7 @@ public class CatppuccinGuiTheme extends GuiTheme {
 
     @Override
     public double scale(double value) {
-        double scaled = value * scale.get();
+        double scaled = value * scale.get() * meteordevelopment.meteorclient.systems.config.Config.get().menuSize.get();
 
         if (Util.getPlatform() == Util.OS.OSX) {
             scaled /= (double) mc.getWindow().getWidth() / mc.getWindow().getWidth();

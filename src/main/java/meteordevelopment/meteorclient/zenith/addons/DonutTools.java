@@ -134,10 +134,13 @@ public final class DonutTools {
         private final Setting<Integer> limit=integer("maximum-attempts","Stop after this many requests.",10,1,100);
         private final Setting<Integer> target=integer("origin-radius","Stop within this horizontal distance of 0,0.",1000,0,100000);
         private final Setting<Boolean> pause=flag("pause-in-menus","Pause while a menu is open. RTP menus are operated manually.",true);
+        private final Setting<Boolean> repeat=flag("repeat-requests","Explicitly allow repeated RTP requests. Off sends only one request per activation.",false);
         private final boolean seekOrigin; private int attempts; private long next;private double best;
         Rtper(boolean seek){super(seek?"rtp-base-finder":"rtper",seek?"Retries server RTP until inside your 0,0 radius or the attempt limit. Random server results cannot be forced.":"Sends a configurable RTP command at a bounded interval. No automatic menu clicking.");seekOrigin=seek;}
         @Override public void onActivate(){attempts=0;next=0;best=Double.POSITIVE_INFINITY;for(Module m:Modules.get().getAll())if(m instanceof Rtper&&m!=this)m.disable();}
         @Override public void onDeactivate(){attempts=0;next=0;}
+        @Override public Module fromTag(net.minecraft.nbt.CompoundTag tag){var copy=tag.copy();copy.putBoolean("active",false);return super.fromTag(copy);}
+        @EventHandler(priority=meteordevelopment.orbit.EventPriority.HIGHEST) private void leave(meteordevelopment.meteorclient.events.game.GameLeftEvent event){disable();}
         @EventHandler private void tick(TickEvent.Post e){
             if(mc.hasSingleplayerServer()){warning("RTP requires a multiplayer server.");disable();return;}
             double distance=Math.hypot(mc.player.getX(),mc.player.getZ());
@@ -150,6 +153,7 @@ public final class DonutTools {
             if(text.isBlank()||text.contains("\n")||text.contains("\r")){error("Set a valid single RTP command.");disable();return;}
             mc.player.connection.sendCommand(text);attempts++;next=now+cooldown.get()*1_000_000_000L;
             info("RTP request %d/%d. Current distance: %.0f blocks.",attempts,limit.get(),distance);
+            if(!repeat.get())disable();
         }
     }
     public static final class OriginRtper extends Rtper { OriginRtper(){super(true);} }
@@ -166,16 +170,18 @@ public final class DonutTools {
         private final Screen previous;private final long opened=System.nanoTime();
         public QuickPanel(Screen previous){super(Component.literal("Zenith Donut"));this.previous=previous;}
         @Override protected void init(){
-            String[] ids={"fullbright","zenith-chunk-finder","zenith-chunk-region","zenith-rtper","zenith-rtp-base-finder","auto-totem","stash-finder","zenith-fake-ban-screen"};
-            int x=Math.max(6,width-244),y=54,row=Math.max(12,Math.min(25,(height-76)/9));
+            String[] ids={"fullbright","zenith-chunk-finder","zenith-chunk-region","zenith-rtper","zenith-rtp-base-finder","auto-totem","stash-finder"};
+            var config=meteordevelopment.meteorclient.systems.config.Config.get();
+            int panel=Math.min(width-12,config.sidebarWidth.get()),x=Math.max(6,width-panel+10),y=54,row=Math.max(12,Math.min(config.sidebarRows.get(),(height-100)/8)),content=panel-24;
             for(String id:ids){Module module=Modules.get().get(id);if(module==null)continue;
-                addRenderableWidget(new ZenithMenuScreen.ZenithButton(x,y,184,row-2,module.title+(module.isActive()?" ON":" OFF"),b->{module.toggle();b.setMessage(Component.literal(module.title+(module.isActive()?" ON":" OFF")));}));
-                addRenderableWidget(new ZenithMenuScreen.ZenithButton(x+188,y,32,row-2,"...",b->mc.gui.setScreen(GuiThemes.get().moduleScreen(module))));y+=row;
+                addRenderableWidget(new ZenithMenuScreen.ZenithButton(x,y,content-36,row-2,module.title.replace("Zenith ","")+(module.isActive()?" ON":" OFF"),b->{module.toggle();b.setMessage(Component.literal(module.title.replace("Zenith ","")+(module.isActive()?" ON":" OFF")));}));
+                addRenderableWidget(new ZenithMenuScreen.ZenithButton(x+content-32,y,32,row-2,"...",b->mc.gui.setScreen(GuiThemes.get().moduleScreen(module))));y+=row;
             }
-            addRenderableWidget(new ZenithMenuScreen.ZenithButton(x,y+5,220,20,"Close",b->onClose()));
+            addRenderableWidget(new ZenithMenuScreen.ZenithButton(x,y+5,content,20,"UI settings / size",b->meteordevelopment.meteorclient.gui.tabs.Tabs.get(meteordevelopment.meteorclient.gui.tabs.builtin.ZenithUiTab.class).openScreen(GuiThemes.get())));
+            addRenderableWidget(new ZenithMenuScreen.ZenithButton(x,y+29,content,20,"Close",b->onClose()));
         }
         @Override public void extractRenderState(GuiGraphicsExtractor g,int mx,int my,float delta){
-            double t=Math.min(1,(System.nanoTime()-opened)/250_000_000.0);int left=Math.max(0,width-256);
+            double t=Math.min(1,(System.nanoTime()-opened)/250_000_000.0);int left=Math.max(0,width-Math.min(width-12,meteordevelopment.meteorclient.systems.config.Config.get().sidebarWidth.get()));
             g.fillGradient(left,0,width,height,((int)(235*t)<<24)|0x1d102e,((int)(245*t)<<24)|0x090711);
             g.fill(left,0,left+2,height,0xffb577ff);g.text(font,"ZENITH / DONUT",left+14,18,0xffe3c9ff,false);
             g.text(font,"Toggle   /   ... settings",left+14,34,0xffb7a1ce,false);
