@@ -90,10 +90,10 @@ public final class ZenithMenuScreen extends TitleScreen {
         g.pose().popMatrix();
     }
 
-    private static final class ZenithButton extends Button {
+    public static final class ZenithButton extends Button {
         private double hoverAmount;
         private long previous=System.nanoTime();
-        ZenithButton(int x,int y,int w,int h,String label,OnPress action) {
+        public ZenithButton(int x,int y,int w,int h,String label,OnPress action) {
             super(x,y,w,h,Component.literal(label),action,DEFAULT_NARRATION);
         }
         @Override protected void extractContents(GuiGraphicsExtractor g,int mx,int my,float delta) {

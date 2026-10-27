@@ -89,6 +89,10 @@ public final class SmokeAddon extends MeteorAddon {
                     for(var module:meteordevelopment.meteorclient.zenith.addons.ZenithVisualModules.all())mc.gui.setScreen(GuiThemes.get().moduleScreen(module));
                     require(true,"ten new module settings screens open in "+themeName);
                 }
+                for(String name:List.of("zenith-chunk-finder","zenith-chunk-region","zenith-rtper","zenith-rtp-base-finder","zenith-donut-panel","zenith-fake-ban-screen")) {
+                    require(Modules.get().get(name)!=null,"Donut module registered: "+name);Modules.get().get(name).disable();
+                    mc.gui.setScreen(GuiThemes.get().moduleScreen(Modules.get().get(name)));
+                }
                 GuiThemes.select("Zenith 2.0");mc.gui.setScreen(new ZenithMenuScreen());
                 var motionTheme=(ZenithGuiTheme)GuiThemes.get();
                 motionTheme.reducedMotion.set(true);motionTheme.motionSpeed.set(2.0);GuiThemes.save();
@@ -551,6 +555,18 @@ public final class SmokeAddon extends MeteorAddon {
                     if(ticks==40){require(visuals.stream().allMatch(m->m.submissions()==0),"disabled new modules stop submitting visuals");next();}
                 }
                 case 11 -> {
+                    var finder=(meteordevelopment.meteorclient.zenith.addons.DonutTools.ChunkFinder)Modules.get().get("zenith-chunk-finder");
+                    if(ticks==1){
+                        finder.settings.reset();finder.settings.get("scan-radius").parse("1");finder.enable();Modules.get().get("zenith-chunk-region").enable();
+                        int x=mc.player.chunkPosition().x()*16,z=mc.player.chunkPosition().z()*16,y=mc.player.blockPosition().getY();
+                        for(int i=1;i<=3;i++)command("setblock "+(x+i)+" "+y+" "+(z+1)+" minecraft:barrel");
+                    }
+                    if(ticks==100){require(finder.detections()>0,"Donut finder detects three placed storage blocks in a loaded chunk");shot("38-donut-regions");Modules.get().get("zenith-donut-panel").enable();}
+                    if(ticks==105){require(mc.gui.screen() instanceof meteordevelopment.meteorclient.zenith.addons.DonutTools.QuickPanel,"Donut sidebar opens");shot("39-donut-panel");mc.gui.screen().onClose();Modules.get().get("zenith-fake-ban-screen").enable();}
+                    if(ticks==110){require(mc.gui.screen() instanceof meteordevelopment.meteorclient.zenith.addons.DonutTools.BanPreview&&mc.level!=null,"fake ban preview keeps the world connected");shot("40-fake-ban");mc.gui.screen().onClose();Modules.get().get("zenith-rtper").enable();}
+                    if(ticks==115){require(!Modules.get().get("zenith-rtper").isActive(),"RTP stops in singleplayer without sending commands");finder.disable();Modules.get().get("zenith-chunk-region").disable();require(finder.detections()==0,"Donut finder clears detections when disabled");next();}
+                }
+                case 12 -> {
                     if(ticks==1){mc.disconnectFromWorld(net.minecraft.network.chat.Component.literal("Zenith smoke completed"));}
                     if(ticks==40) {
                         require(mc.gui.screen() instanceof ZenithMenuScreen,"disconnect returns to Zenith main menu after all themes and addons");

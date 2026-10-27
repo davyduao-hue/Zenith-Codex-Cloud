@@ -1,7 +1,7 @@
 # Zenith Client 2.0
 
 A purple Minecraft **26.2 / Fabric / Java 25** client built from Meteor's GPL-3.0
-source. Version **2.1.0** includes built-in Catppuccin and Nora Tweaks source,
+source. Version **2.2.0** includes built-in Catppuccin and Nora Tweaks source,
 a distinct purple Zenith theme with animated pill switches, a floating-star main menu, editable HUD,
 and red-dusk/silver-storm atmosphere and combat visuals based on the recordings.
 
@@ -13,6 +13,9 @@ Use its matching JAR and Java 25; from the repository root build it with
 
 Update 2.1 adds [ten optional modules and GUI motion controls](docs/NEW-MODULES.md),
 including jump rings, damage numbers, viewmodel motion, armor warnings and waypoints.
+
+Update 2.2 adds [original Donut tools](docs/DONUT.md) for 26.2: chunk clues, region
+map/outlines, bounded RTP, a purple settings sidebar and a local fake-ban preview.
 
 ## Build in Windows Command Prompt
 
@@ -27,12 +30,12 @@ gradlew.bat build
 The wrapper downloads and verifies Gradle 9.6.1. Do not install Gradle separately.
 The first build needs Internet access to resolve Minecraft, Fabric and libraries.
 
-Install `build\libs\zenith-client-2.1.0+mc26.2.jar` in the `mods` folder of a
+Install `build\libs\zenith-client-2.2.0+mc26.2.jar` in the `mods` folder of a
 Minecraft **26.2** Fabric profile, using Fabric Loader **0.19.3 or newer** and
 Java 25. Fabric's required resource modules and client libraries are included.
 The `-sources.jar` is the corresponding source, not an installable client.
 The same command also creates a complete buildable source ZIP under
-`build\distributions\zenith-client-2.1.0+mc26.2-source-project.zip`.
+`build\distributions\zenith-client-2.2.0+mc26.2-source-project.zip`.
 
 This fork retains the internal `meteor-client` mod ID for compatibility with
 Meteor's mixins and module code. Install it as a replacement for Meteor in that
@@ -245,7 +248,7 @@ gradlew.bat runSmokeClient -PzenithSmoke
 ```
 
 Linux equivalents use `./gradlew`. `build` compiles the client and runs
-**31** camera-frustum, frame-history, input-animation, look-motion/docking, sky-noise and visual-budget tests. The optional graphical smoke run needs a display and uses
+**33** coordinate-boundary, camera-frustum, frame-history, input-animation, look-motion/docking, sky-noise and visual-budget tests. The optional graphical smoke run needs a display and uses
 its own ignored `run-smoke` directory. It checks module registration, the menu,
 GUI and HUD editor, then creates a uniquely named local flat world to exercise
 HUD sampling, totems, potions, pearls, explosions and death rendering, plus custom

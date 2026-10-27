@@ -1,13 +1,14 @@
 # Download Zenith Client 2.0
 
-Current update: **2.1.0** — separate Minecraft **1.21.11** and **26.2** builds,
+Current update: **2.2.0 for 26.2**, adding [Donut tools](../docs/DONUT.md).
+The **1.21.11** download remains at **2.1.0**. Both builds include
 ten optional visual modules, configurable GUI animations, purple themes, HUD,
 procedural effects and selectable skyboxes. Glazed remains a separate addon.
 
 | Minecraft | Installable JAR | Buildable source | Client + source bundle |
 | --- | --- | --- | --- |
 | 1.21.11 | [Download JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-MC1.21.11.jar) | [Source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Source-MC1.21.11.zip) | [Bundle](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Download-MC1.21.11.zip) |
-| 26.2 | [Download JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-MC26.2.jar) | [Source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Source.zip) | [Bundle](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.1.0/downloads/Zenith-Client-2.0-Download.zip) |
+| 26.2 | [Download JAR](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.2.0-mc26.2/downloads/Zenith-Client-2.0-MC26.2.jar) | [Source ZIP](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.2.0-mc26.2/downloads/Zenith-Client-2.0-Source.zip) | [Bundle](https://github.com/davyduao-hue/Zenith-Codex-Cloud/raw/refs/tags/v2.2.0-mc26.2/downloads/Zenith-Client-2.0-Download.zip) |
 
 Use **Java 25** for both versions. Use Fabric Loader **0.18.2+ for 1.21.11** or
 **0.19.3+ for 26.2**. Put the matching client JAR in your Fabric profile's `mods`

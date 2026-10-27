@@ -1,4 +1,27 @@
-# Validation — 2026-10-26
+# Donut update 2.2.0 — 2026-10-27
+
+Minecraft 26.2 only. Build passed with Java 25; **33 unit tests** passed and the
+Glazed-enabled graphical run passed **234 checks**. New checks cover registration
+of all six tools, their settings, detecting placed barrels, rendering the region
+map, opening the sidebar, showing/closing the local ban preview while connected,
+RTP refusing singleplayer, and clearing finder state on disable.
+
+The test used official Glazed 26.2-n-17.2 and Fabric API 0.161.0+26.2. It ran in an
+integrated test world under Xvfb/software OpenGL. Live DonutSMP commands, cooldowns,
+server-specific region labels and detection accuracy on real bases are unverified.
+No utilization cap or pixel-perfect match to unsupplied screenshots is claimed.
+
+[Feature behavior and limits](DONUT.md) · [Machine-readable result](donut-validation.json)
+
+![Purple Donut sidebar](screenshots/donut/panel.png)
+
+![Region grid](screenshots/donut/regions.png)
+
+![Local ban preview](screenshots/donut/fake-ban.png)
+
+## Previous 2.1.0 validation
+
+### Validation — 2026-10-26
 
 Update **2.1.0**. Both builds use Temurin JDK 25.0.4.1.
 

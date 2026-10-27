@@ -13,6 +13,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--minecraft', choices=['26.2', '1.21.11'], default='26.2')
 mc = parser.parse_args().minecraft
 project = root if mc == '26.2' else root / 'versions/1.21.11'
+properties = dict(line.split('=', 1) for line in (project / 'gradle.properties').read_text().splitlines() if '=' in line and not line.startswith('#'))
+version = properties['zenith_version']
 artifact = project / f'build/libs/zenith-client-{properties["zenith_version"]}+mc{mc}.jar'
 with zipfile.ZipFile(artifact) as jar:
     names = set(jar.namelist())
@@ -27,6 +29,8 @@ with zipfile.ZipFile(artifact) as jar:
     assert not any('/zenith/smoke/' in n for n in names), 'Test addon leaked into client'
     for name in ['SkyTransform', 'WZenithModule', 'WZenithWindow', 'ZenithModulesScreen', 'SkyUniforms', 'ZenithGuiScreen', 'ZenithGuiTheme', 'ZenithDraw', 'UiMotion', 'VisualBudget', 'SkyPattern', 'ZenithSkybox', 'addons/ZenithVisualModules', 'addons/ZenithAddons', 'addons/ZenithCrystalAura', 'addons/ZenithKillAura']:
         assert f'meteordevelopment/meteorclient/zenith/{name}.class' in names, name
+    if mc == '26.2':
+        assert 'meteordevelopment/meteorclient/zenith/addons/DonutTools.class' in names
     assert not any(n.startswith('dev/zenith/example/') for n in names), 'Example addon was bundled into client'
     for entry in ['me/pindour/catppuccin/CatppuccinAddon.class', 'me/noramibu/tweaks/NoraTweaks.class',
                   'assets/meteor-client/shaders/zenith_sprite.frag', 'assets/meteor-client/shaders/zenith_panorama.frag',
